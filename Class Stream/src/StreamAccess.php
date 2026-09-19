@@ -3,7 +3,6 @@ namespace Gibbon\Module\ClassStream;
 
 use Gibbon\Contracts\Services\Session;
 use Gibbon\Domain\System\SettingGateway;
-use Gibbon\Domain\Timetable\CourseGateway;
 use Gibbon\Domain\Students\StudentGateway;
 use Gibbon\Module\ClassStream\Domain\PostGateway;
 use Gibbon\Module\ClassStream\Domain\MuteGateway;
@@ -37,7 +36,6 @@ class StreamAccess
 
     protected $session;
     protected $settingGateway;
-    protected $courseGateway;
     protected $studentGateway;
     protected $postGateway;
     protected $muteGateway;
@@ -46,7 +44,6 @@ class StreamAccess
     public function __construct(
         Session $session,
         SettingGateway $settingGateway,
-        CourseGateway $courseGateway,
         StudentGateway $studentGateway,
         PostGateway $postGateway,
         MuteGateway $muteGateway,
@@ -54,7 +51,6 @@ class StreamAccess
     ) {
         $this->session = $session;
         $this->settingGateway = $settingGateway;
-        $this->courseGateway = $courseGateway;
         $this->studentGateway = $studentGateway;
         $this->postGateway = $postGateway;
         $this->muteGateway = $muteGateway;
@@ -68,7 +64,7 @@ class StreamAccess
      * @param string $gibbonCourseClassID
      * @param string $gibbonPersonIDStudent  For the 'parent' scope: the child whose class this is.
      * @return array|null  null when the class does not exist or the person may not see it.
-     *   Keys: class (CourseGateway::getCourseClassInfoByID row), role, viewingAs (Staff, Student
+     *   Keys: class (PostGateway::getClassInfoByID row), role, viewingAs (Staff, Student
      *   or Parent, for the Planner's visibility flags), isStaff, canPost, canComment, canManage,
      *   muted, parentView (the school setting, parents only), childID (parents only),
      *   settings (colour, colourKey, headerImage, studentAccess, plannerDisplay, with defaults).
@@ -79,13 +75,12 @@ class StreamAccess
             return null;
         }
 
-        // getCourseClassInfoByID, not getCourseClassDetails: the latter inner-joins gibbonDepartment
-        // and so returns nothing for a course with no department.
-        $class = $this->courseGateway->getCourseClassInfoByID($gibbonCourseClassID);
+        // The module's own class query: no join to gibbonDepartment (a course may have none), and
+        // v30 core has no equivalent method.
+        $class = $this->postGateway->getClassInfoByID($gibbonCourseClassID);
         if (empty($class)) {
             return null;
         }
-        $class['gibbonCourseClassID'] = $gibbonCourseClassID;
 
         $settings = $this->settingsForClass($gibbonCourseClassID);
 

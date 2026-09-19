@@ -273,6 +273,42 @@ class PostGateway extends QueryableGateway
     }
 
     /**
+     * A class with its course and year, in the shape of v31 core's CourseGateway::getCourseClassInfoByID().
+     * Kept here because v30 core has no such method, and the module runs on both.
+     */
+    public function getClassInfoByID($gibbonCourseClassID)
+    {
+        $data = ['gibbonCourseClassID' => $gibbonCourseClassID];
+        $sql = "SELECT gibbonCourseClass.gibbonCourseClassID, gibbonCourse.gibbonSchoolYearID, gibbonCourse.name AS courseLong, gibbonCourse.nameShort AS course, gibbonCourseClass.name AS classLong, gibbonCourseClass.nameShort AS class, gibbonCourse.gibbonCourseID, gibbonSchoolYear.name AS year, gibbonCourseClass.attendance
+                FROM gibbonCourse
+                JOIN gibbonCourseClass ON (gibbonCourse.gibbonCourseID=gibbonCourseClass.gibbonCourseID)
+                JOIN gibbonSchoolYear ON (gibbonCourse.gibbonSchoolYearID=gibbonSchoolYear.gibbonSchoolYearID)
+                WHERE gibbonCourseClass.gibbonCourseClassID=:gibbonCourseClassID";
+
+        return $this->db()->selectOne($sql, $data);
+    }
+
+    /**
+     * The current teachers of a class (role Teacher, status Full, within their dates). v30 core has
+     * no CourseClassPersonGateway, so the module carries this itself.
+     */
+    public function selectTeachersByClass($gibbonCourseClassID)
+    {
+        $data = ['gibbonCourseClassID' => $gibbonCourseClassID, 'today' => date('Y-m-d')];
+        $sql = "SELECT gibbonCourseClassPerson.role, gibbonPerson.gibbonPersonID, gibbonPerson.title, gibbonPerson.surname, gibbonPerson.preferredName, gibbonPerson.image_240, gibbonPerson.email
+                FROM gibbonCourseClassPerson
+                JOIN gibbonPerson ON (gibbonPerson.gibbonPersonID=gibbonCourseClassPerson.gibbonPersonID)
+                WHERE gibbonCourseClassPerson.gibbonCourseClassID=:gibbonCourseClassID
+                AND gibbonCourseClassPerson.role='Teacher'
+                AND gibbonPerson.status='Full'
+                AND (gibbonPerson.dateStart IS NULL OR gibbonPerson.dateStart<=:today)
+                AND (gibbonPerson.dateEnd IS NULL OR gibbonPerson.dateEnd>=:today)
+                ORDER BY gibbonPerson.surname, gibbonPerson.preferredName";
+
+        return $this->db()->select($sql, $data);
+    }
+
+    /**
      * The person's live role in a class, Teacher-type roles first so a person who is somehow both
      * a teacher and a student of a class is treated as the teacher.
      */

@@ -22,7 +22,6 @@ use Gibbon\Domain\System\ModuleGateway;
 use Gibbon\Services\Format;
 use Gibbon\Comms\NotificationSender;
 use Gibbon\Domain\System\SettingGateway;
-use Gibbon\Domain\Timetable\CourseClassPersonGateway;
 use Gibbon\Module\ClassStream\Theme;
 use Gibbon\Module\ClassStream\Domain\LinkGateway;
 use Gibbon\Module\ClassStream\Domain\PostGateway;
@@ -164,9 +163,9 @@ function classStreamNotifyPost($container, $session, array $class, array $post):
 {
     if ($container->get(SettingGateway::class)->getSettingByScope('Class Stream', 'notifyOnPost') != 'Y') return;
 
-    $classPersonGateway = $container->get(CourseClassPersonGateway::class);
-    $teachers = $classPersonGateway->selectTeachersByClass($class['gibbonCourseClassID'])->fetchAll();
-    $students = $container->get(PostGateway::class)->selectStudentsByClass($class['gibbonCourseClassID'])->fetchAll();
+    $postGateway = $container->get(PostGateway::class);
+    $teachers = $postGateway->selectTeachersByClass($class['gibbonCourseClassID'])->fetchAll();
+    $students = $postGateway->selectStudentsByClass($class['gibbonCourseClassID'])->fetchAll();
 
     $author = $post['gibbonPersonID'];
     $className = $class['course'].'.'.$class['class'];
@@ -199,7 +198,7 @@ function classStreamCopyPost($container, array $post, $gibbonCourseClassIDTarget
     $postGateway = $container->get(PostGateway::class);
     $attachmentGateway = $container->get(PostAttachmentGateway::class);
 
-    $target = $container->get(\Gibbon\Domain\Timetable\CourseGateway::class)->getCourseClassInfoByID($gibbonCourseClassIDTarget);
+    $target = $postGateway->getClassInfoByID($gibbonCourseClassIDTarget);
     if (empty($target)) return null;
 
     $data = [
@@ -274,9 +273,8 @@ function classStreamSyncCopies($container, $session, $classStreamPostID): void
 
     foreach ($container->get(LinkGateway::class)->selectTargetsByClass($post['gibbonCourseClassID'])->fetchAll() as $target) {
         classStreamCopyPost($container, $post, $target['gibbonCourseClassIDTarget']);
-        $targetClass = $container->get(\Gibbon\Domain\Timetable\CourseGateway::class)->getCourseClassInfoByID($target['gibbonCourseClassIDTarget']);
+        $targetClass = $container->get(PostGateway::class)->getClassInfoByID($target['gibbonCourseClassIDTarget']);
         if (!empty($targetClass)) {
-            $targetClass['gibbonCourseClassID'] = $target['gibbonCourseClassIDTarget'];
             classStreamPublishDue($container, $session, $targetClass);
         }
     }

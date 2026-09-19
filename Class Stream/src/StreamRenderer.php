@@ -9,7 +9,6 @@ use League\Container\ContainerAwareTrait;
 use League\Container\ContainerAwareInterface;
 use Gibbon\Domain\System\SettingGateway;
 use Gibbon\Domain\Timetable\CourseEnrolmentGateway;
-use Gibbon\Domain\Timetable\CourseClassPersonGateway;
 use Gibbon\Module\ClassStream\Domain\LinkGateway;
 use Gibbon\Module\ClassStream\Domain\PostGateway;
 use Gibbon\Module\ClassStream\Domain\ViewGateway;
@@ -43,7 +42,6 @@ class StreamRenderer implements ContainerAwareInterface
     protected $commentGateway;
     protected $plannerItemGateway;
     protected $attachmentGateway;
-    protected $classPersonGateway;
     protected $enrolmentGateway;
     protected $linkGateway;
 
@@ -58,7 +56,6 @@ class StreamRenderer implements ContainerAwareInterface
         CommentGateway $commentGateway,
         PlannerItemGateway $plannerItemGateway,
         PostAttachmentGateway $attachmentGateway,
-        CourseClassPersonGateway $classPersonGateway,
         CourseEnrolmentGateway $enrolmentGateway,
         LinkGateway $linkGateway
     ) {
@@ -72,7 +69,6 @@ class StreamRenderer implements ContainerAwareInterface
         $this->commentGateway = $commentGateway;
         $this->plannerItemGateway = $plannerItemGateway;
         $this->attachmentGateway = $attachmentGateway;
-        $this->classPersonGateway = $classPersonGateway;
         $this->enrolmentGateway = $enrolmentGateway;
         $this->linkGateway = $linkGateway;
     }
@@ -235,7 +231,7 @@ class StreamRenderer implements ContainerAwareInterface
         }
 
         // SIDE PANEL
-        $teachers = $this->classPersonGateway->selectTeachersByClass($gibbonCourseClassID)->fetchAll();
+        $teachers = $this->postGateway->selectTeachersByClass($gibbonCourseClassID)->fetchAll();
         $studentCount = $this->enrolmentGateway->getClassStudentCount($gibbonCourseClassID);
 
         $upcoming = $showHomework && $plannerDisplay != 'Hidden'

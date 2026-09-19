@@ -124,3 +124,9 @@ $sql[$count][0] = "0.8.00";
 $sql[$count][1] = "UPDATE gibbonAction SET URLList='stream.php,stream_view.php,stream_post_add.php,stream_post_addProcess.php,stream_post_edit.php,stream_post_editProcess.php,stream_post_deleteProcess.php,stream_post_attachment_deleteProcess.php,stream_commentProcess.php,stream_comment_deleteProcess.php,stream_customise.php,stream_customiseProcess.php,stream_people.php,stream_people_muteProcess.php,stream_reuse.php,stream_reuseProcess.php,stream_drafts.php,stream_post_publishProcess.php,stream_post_delete.php,stream_post_publish.php' WHERE name IN ('View Class Streams_myClasses', 'View Class Streams_allClasses', 'View Class Streams_departmentClassesView') AND gibbonModuleID=(SELECT gibbonModuleID FROM gibbonModule WHERE name='Class Stream')
 ;end
 -- Insights folded into the People page; the separate page is gone from the URL lists.";
+
+// v0.8.01
+$count++;
+$sql[$count][0] = "0.8.01";
+$sql[$count][1] = "-- Code only: the module no longer calls two core methods that Gibbon v30 does not have
+-- (CourseGateway::getCourseClassInfoByID and CourseClassPersonGateway), so it runs on v30 and v31.";

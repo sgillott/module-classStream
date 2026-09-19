@@ -19,9 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use Gibbon\Forms\Form;
 use Gibbon\Services\Format;
-use Gibbon\Domain\Timetable\CourseClassPersonGateway;
 use Gibbon\Module\ClassStream\StreamAccess;
 use Gibbon\Module\ClassStream\Domain\MuteGateway;
+use Gibbon\Module\ClassStream\Domain\PostGateway;
 use Gibbon\Module\ClassStream\Domain\ViewGateway;
 
 require_once __DIR__.'/moduleFunctions.php';
@@ -47,7 +47,7 @@ $page->breadcrumbs
     ->add($className, 'stream_view.php', ['gibbonCourseClassID' => $gibbonCourseClassID])
     ->add(__m('People'));
 
-$teachers = $container->get(CourseClassPersonGateway::class)->selectTeachersByClass($gibbonCourseClassID)->fetchAll();
+$teachers = $container->get(PostGateway::class)->selectTeachersByClass($gibbonCourseClassID)->fetchAll();
 $students = $container->get(ViewGateway::class)->selectInsightsByClass($gibbonCourseClassID, classStreamModuleID($container))->fetchAll();
 $muted = $container->get(MuteGateway::class)->selectMutedByClass($gibbonCourseClassID)->fetchKeyPair();
 

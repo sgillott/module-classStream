@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+v0.8.01
+-------
+Runs on Gibbon v30 as well as v31: two class queries that only v31 core provides are now the module's own.
+The dashboard tab and the class cards have padding below them.
+
 v0.8.00
 -------
 Insights merged into the People page: one roster with last visit, visits, comments, posts and the mute boxes, sortable by clicking a heading. The Insights button is gone.
