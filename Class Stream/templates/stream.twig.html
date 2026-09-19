@@ -1,0 +1,107 @@
+{#<!--
+Gibbon, Flexible & Open School System
+Copyright (C) 2010, Ross Parker
+
+Class Stream: one class's stream page. Banner, side panel, then a timeline of posts and Planner
+rows (post.twig.html / plannerItem.twig.html), each with its comments (comments.twig.html).
+-->#}
+
+{% set moduleURL = absoluteURL ~ '/index.php?q=/modules/Class Stream' %}
+{% set processURL = absoluteURL ~ '/modules/Class Stream' %}
+{% set studentParam = gibbonPersonIDStudent ? '&gibbonPersonIDStudent=' ~ gibbonPersonIDStudent : '' %}
+
+<div class="cs-banner" style="background-color: {{ settings.colour.hex }}; {% if settings.headerImage %}background-image: url('{{ absoluteURL }}/{{ settings.headerImage }}');{% endif %}">
+    <div class="cs-banner-text">
+        <h1 class="cs-banner-title">{{ className }}</h1>
+        <div class="cs-banner-subtitle">{{ class.courseLong }}</div>
+    </div>
+    {% if access.canManage %}
+    <div class="cs-banner-actions">
+        <a class="cs-button-light" href="{{ moduleURL }}/stream_customise.php&gibbonCourseClassID={{ gibbonCourseClassID }}">{{ icon('solid', 'config', 'size-4 inline-block -mt-px mr-1') }}{{ __m('Class Settings') }}</a>
+        <a class="cs-button-light" href="{{ moduleURL }}/stream_people.php&gibbonCourseClassID={{ gibbonCourseClassID }}">{{ icon('solid', 'users', 'size-4 inline-block -mt-px mr-1') }}{{ __m('People') }}</a>
+        <a class="cs-button-light" href="{{ moduleURL }}/stream_drafts.php&gibbonCourseClassID={{ gibbonCourseClassID }}">{{ icon('solid', 'document', 'size-4 inline-block -mt-px mr-1') }}{{ __m('Drafts') }}{% if draftCount %} <span class="cs-count">{{ draftCount }}</span>{% endif %}</a>
+    </div>
+    {% endif %}
+</div>
+
+<div class="cs-layout">
+
+    <aside class="cs-side">
+        <div class="cs-panel">
+            <h4 class="cs-panel-title">{{ __m('Teachers') }}</h4>
+            {% for teacher in teachers %}
+                <div class="text-sm">{{ formatUsing('name', teacher.title, teacher.preferredName, teacher.surname, 'Staff', false, false) }}</div>
+            {% else %}
+                <div class="text-sm text-gray-500">{{ __m('No teacher assigned') }}</div>
+            {% endfor %}
+            <div class="text-xs text-gray-500 mt-2">{{ __m('{count} students', {'count': studentCount}) }}</div>
+        </div>
+
+        {% if upcoming is defined and (upcoming or plannerAccessible) %}
+        <div class="cs-panel">
+            <h4 class="cs-panel-title">{{ __m('Upcoming') }}</h4>
+            {% for item in upcoming %}
+                <div class="text-sm my-1">
+                    <a href="{{ absoluteURL }}/index.php?q=/modules/Planner/planner_view_full.php&gibbonPlannerEntryID={{ item.gibbonPlannerEntryID }}&viewBy=class&gibbonCourseClassID={{ gibbonCourseClassID }}{{ plannerSearch }}">{{ item.name }}</a>
+                    <div class="text-xs text-gray-500">{{ __m('Due {date}', {'date': formatUsing('dateTime', item.homeworkDueDateTime)}) }}</div>
+                </div>
+            {% else %}
+                <div class="text-sm text-gray-500">{{ __m('No work due in soon') }}</div>
+            {% endfor %}
+            {% if plannerAccessible %}
+                <a class="block text-xs mt-2 text-right" href="{{ absoluteURL }}/index.php?q=/modules/Planner/planner_deadlines.php&gibbonCourseClassIDFilter={{ gibbonCourseClassID }}{{ plannerSearch }}">{{ __('View all') }}</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if links %}
+        <div class="cs-panel">
+            <h4 class="cs-panel-title">{{ __m('Quick links') }}</h4>
+            {% for link in links %}
+                <a class="block text-sm my-1" href="{{ link.url }}">{{ link.name }}</a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if access.muted %}
+        <div class="cs-panel cs-panel-muted">
+            {{ __m('You have been muted in this class. You can read the stream but not post or comment.') }}
+        </div>
+        {% endif %}
+    </aside>
+
+    <main class="cs-main">
+
+        {% if access.canPost %}
+        <a class="cs-compose" href="{{ moduleURL }}/stream_post_add.php&gibbonCourseClassID={{ gibbonCourseClassID }}">
+            {{ icon('solid', 'edit', 'size-5 inline-block mr-2 text-gray-500') }}
+            {{ __m('Announce something to your class') }}
+        </a>
+        {% endif %}
+
+        {% if items is empty %}
+            <div class="cs-empty">{{ __m('Nothing has been posted to this stream yet.') }}</div>
+        {% endif %}
+
+        {% for item in items %}
+            {% if item.kind == 'post' %}
+                {{ include('post.twig.html', {'post': item}) }}
+            {% else %}
+                {{ include('plannerItem.twig.html', {'item': item}) }}
+            {% endif %}
+        {% endfor %}
+
+        {% if pageCount > 1 %}
+        <div class="cs-pager">
+            {% if pageNumber > 1 %}
+                <a href="{{ moduleURL }}/{{ viewURL }}&page={{ pageNumber - 1 }}">{{ __m('Newer') }}</a>
+            {% else %}<span></span>{% endif %}
+            <span class="text-gray-500">{{ __m('Page {page} of {count}', {'page': pageNumber, 'count': pageCount}) }}</span>
+            {% if pageNumber < pageCount %}
+                <a href="{{ moduleURL }}/{{ viewURL }}&page={{ pageNumber + 1 }}">{{ __m('Older') }}</a>
+            {% else %}<span></span>{% endif %}
+        </div>
+        {% endif %}
+
+    </main>
+</div>

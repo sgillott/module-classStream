@@ -1,0 +1,34 @@
+{#<!--
+Gibbon, Flexible & Open School System
+Copyright (C) 2010, Ross Parker
+
+Class Stream: one Planner row on the stream, homework or lesson, in condensed or details mode.
+Expects item, plus the page-level variables of stream.twig.html.
+-->#}
+
+<article class="cs-post cs-planner" id="planner{{ item.gibbonPlannerEntryID }}">
+    <header class="cs-post-header">
+        <div class="cs-planner-icon">{{ icon('solid', item.isHomework ? 'homework' : 'planner', 'size-5') }}</div>
+        <div class="flex-1 min-w-0">
+            <div class="text-sm text-gray-800">
+                <span class="font-semibold">{{ formatUsing('name', '', item.preferredName, item.surname, 'Staff', false, true) }}</span>
+                {{ item.isHomework ? __m('posted new homework:') : __m('posted a new lesson:') }}
+                <a class="font-semibold" href="{{ item.plannerURL }}">{{ item.name }}</a>
+            </div>
+            <div class="text-xs text-gray-600">
+                {{ formatUsing('date', item.date) }}
+                {% if item.isHomework and item.homeworkDueDateTime %}
+                    &middot; {{ __m('Due {date}', {'date': formatUsing('dateTime', item.homeworkDueDateTime)}) }}
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    {% if item.details %}
+    <div class="cs-post-body">
+        {{ item.details|raw }}
+    </div>
+    {% endif %}
+
+    {{ include('comments.twig.html', {'comments': item.comments, 'targetType': 'planner', 'targetID': item.gibbonPlannerEntryID}) }}
+</article>

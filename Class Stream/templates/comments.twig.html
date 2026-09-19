@@ -1,0 +1,50 @@
+{#<!--
+Gibbon, Flexible & Open School System
+Copyright (C) 2010, Ross Parker
+
+Class Stream: the comments under a post or a Planner row, and the box to add one.
+Expects comments, targetType ('post' or 'planner'), targetID, plus the page-level variables.
+-->#}
+
+{% if comments or access.canComment %}
+<footer class="cs-comments">
+    {% if comments %}
+    <div class="cs-comments-count">{{ __m('{count} class comments', {'count': comments|length}) }}</div>
+    {% for comment in comments %}
+    <div class="cs-comment" id="comment{{ comment.gibbonDiscussionID }}">
+        <div class="cs-avatar cs-avatar-sm">
+            <img src="{{ comment.image_240 ? absoluteURL ~ '/' ~ comment.image_240 : absoluteURL ~ '/themes/' ~ gibbonThemeName ~ '/img/anonymous_240.jpg' }}" alt="" />
+        </div>
+        <div class="flex-1 min-w-0">
+            <span class="font-semibold text-xs text-gray-800">{{ formatUsing('name', '', comment.preferredName, comment.surname, 'Student', false, true) }}</span>
+            <span class="text-xs text-gray-500 ml-1">{{ formatUsing('relativeTime', comment.timestamp) }}</span>
+            <div class="text-sm text-gray-700 whitespace-pre-line">{{ comment.comment }}</div>
+        </div>
+        {% if comment.canDelete %}
+        <form method="post" action="{{ processURL }}/stream_comment_deleteProcess.php" class="inline" onsubmit="return confirm('{{ __m('Delete this comment?')|e('js') }}');">
+            <input type="hidden" name="csrftoken" value="{{ csrftoken }}">
+            <input type="hidden" name="nonce" value="{{ nonce }}">
+            <input type="hidden" name="address" value="{{ address }}">
+            <input type="hidden" name="gibbonCourseClassID" value="{{ gibbonCourseClassID }}">
+            <input type="hidden" name="gibbonDiscussionID" value="{{ comment.gibbonDiscussionID }}">
+            <button type="submit" class="cs-action cs-action-danger" title="{{ __('Delete') }}">{{ icon('solid', 'delete', 'size-4') }}</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if access.canComment %}
+    <form method="post" action="{{ processURL }}/stream_commentProcess.php" class="cs-comment-form">
+        <input type="hidden" name="csrftoken" value="{{ csrftoken }}">
+        <input type="hidden" name="nonce" value="{{ nonce }}">
+        <input type="hidden" name="address" value="{{ address }}">
+        <input type="hidden" name="gibbonCourseClassID" value="{{ gibbonCourseClassID }}">
+        <input type="hidden" name="targetType" value="{{ targetType }}">
+        <input type="hidden" name="targetID" value="{{ targetID }}">
+        <textarea name="comment" rows="1" maxlength="2000" required placeholder="{{ __m('Add class comment…') }}" class="cs-comment-input"></textarea>
+        <button type="submit" class="cs-comment-send" title="{{ __m('Post comment') }}">{{ icon('solid', 'next', 'size-5') }}</button>
+    </form>
+    {% endif %}
+</footer>
+{% endif %}

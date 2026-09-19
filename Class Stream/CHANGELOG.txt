@@ -1,0 +1,56 @@
+CHANGELOG
+=========
+
+v0.8.00
+-------
+Insights merged into the People page: one roster with last visit, visits, comments, posts and the mute boxes, sortable by clicking a heading. The Insights button is gone.
+
+v0.7.00
+-------
+Insights page for teachers: who has visited the stream, when, how often, and how many comments and posts each student has made.
+Parents: the dashboard tab shows only the child whose dashboard it is; My Streams is headed with the child's name; links into the Planner now open for parents.
+
+v0.6.00
+-------
+Drafts page uses Gibbon's standard table and action buttons. Publish Now and Delete confirm in a modal.
+Sixteen theme colours instead of eight: red, amber, lime, emerald, indigo, magenta, rose and brown join the original set.
+
+v0.5.00
+-------
+Posts can be saved as a draft or scheduled for a date and time. A Drafts page on each class lists them, with Edit and Publish Now. A scheduled post is announced to the class on the first visit after its time.
+Reuse now puts the copied posts in Drafts instead of publishing them all at once, and is reached from the Drafts page.
+Drafts do not sync to linked classes; a post syncs when it is published, a scheduled one when its time comes.
+The Customise button is now Class Settings; the class links are called 1-way and 2-way sync.
+
+v0.4.00
+-------
+Linked classes on the Customise page: mirror a class to others (posts made here also appear there) or sync classes (posts made in any appear in all). Copies follow edits and deletions of the original. Comments are never copied.
+Reuse: copy announcements and materials from any class you have taught, this year or a past one, into the current stream.
+Heads of Department now pick department classes from a Find a Department Class box; My Streams shows only their own classes.
+Teachers on the class cards and the dashboard tab use the school's formal staff name format.
+
+v0.3.00
+-------
+A Class Stream tab on the Staff, Student and Parent dashboards. When one of your classes is on the timetable right now, the tab shows that class's stream; otherwise it shows a Now/Next strip and your class cards.
+Class cards show how many posts are new since you last opened that stream.
+Class members get a Gibbon notification when someone posts (Notify On Post setting).
+Posts can be Material as well as Announcement: a Material post has a title.
+New permission View Class Streams: departmentClassesView, for Heads of Department: read and comment in every class of their departments, on top of their own classes.
+
+v0.2.00
+-------
+Homework from the Planner now appears on the stream as a row of its own, and lessons too if the school allows it. Each class teacher chooses condensed rows, rows with details, or none.
+Members can comment on those Planner rows like on any post.
+An Upcoming panel lists the homework still due, with a link to the Homework page.
+Homework added to the quick links.
+Parents can open their children's streams, read only. The school chooses what they see of the students' side: their own child only, everything with other students hidden, or teacher posts only.
+The People page lists each student once, and its header checkbox mutes or unmutes everyone.
+
+v0.1.00
+-------
+First working version.
+My Streams page lists the classes you belong to.
+Each class has a stream: teachers post announcements with links and files, members comment.
+Teachers can customise a class (theme colour, header image, what students may do, how Planner items show).
+Teachers can mute a student for one class from the People page.
+Admin settings for the defaults.

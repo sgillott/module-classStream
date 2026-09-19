@@ -1,0 +1,45 @@
+{#<!--
+Gibbon, Flexible & Open School System
+Copyright (C) 2010, Ross Parker
+
+Class Stream: the My Streams cards, one per class the person belongs to. Also used inside the
+dashboard tab (compact = true).
+-->#}
+
+{% macro card(class, gibbonPersonIDStudent) %}
+    <a class="cs-card" href="{{ absoluteURL }}/index.php?q=/modules/Class Stream/stream_view.php&gibbonCourseClassID={{ class.gibbonCourseClassID }}{% if gibbonPersonIDStudent %}&gibbonPersonIDStudent={{ gibbonPersonIDStudent }}{% endif %}">
+        <div class="cs-card-header" style="background-color: {{ class.colour.hex }}; {% if class.headerImage %}background-image: url('{{ absoluteURL }}/{{ class.headerImage }}');{% endif %}">
+            <div class="cs-card-title">{{ class.course }}.{{ class.class }}</div>
+            <div class="cs-card-subtitle">{{ class.courseName }}</div>
+            {% if class.newCount > 0 %}<span class="cs-card-new">{{ __m('{count} new', {'count': class.newCount}) }}</span>{% endif %}
+        </div>
+        <div class="cs-card-body">
+            <div class="text-xs text-gray-600">{{ class.teachers ?: '&nbsp;'|raw }}</div>
+            <div class="text-xs text-gray-500 mt-2">
+                {% if class.postCount > 0 %}
+                    {{ __m('{count} posts', {'count': class.postCount}) }} &middot; {{ formatUsing('relativeTime', class.lastPost) }}
+                {% else %}
+                    {{ __m('No posts yet') }}
+                {% endif %}
+            </div>
+        </div>
+    </a>
+{% endmacro %}
+
+{% import _self as cards %}
+
+{% if not compact %}<h2>{{ heading ?: __m('My Streams') }}</h2>{% endif %}
+
+{% if classes is empty %}
+    <div class="h-48 rounded-sm border bg-gray-100 shadow-inner overflow-hidden">
+        {{ include('components/blankSlate.twig.html', {'blankSlate': __m('You are not a member of any class this year.')}) }}
+    </div>
+{% endif %}
+
+{% if classes %}
+<div class="cs-cards">
+    {% for class in classes %}
+        {{ cards.card(class, gibbonPersonIDStudent) }}
+    {% endfor %}
+</div>
+{% endif %}

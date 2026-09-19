@@ -1,0 +1,70 @@
+{#<!--
+Gibbon, Flexible & Open School System
+Copyright (C) 2010, Ross Parker
+
+Class Stream: one post card. Expects post, plus the page-level variables of stream.twig.html.
+-->#}
+
+<article class="cs-post {{ post.pinned == 'Y' ? 'cs-post-pinned' }}" id="post{{ post.classStreamPostID }}">
+    <header class="cs-post-header">
+        <div class="cs-avatar">
+            <img src="{{ post.image_240 ? absoluteURL ~ '/' ~ post.image_240 : absoluteURL ~ '/themes/' ~ gibbonThemeName ~ '/img/anonymous_240.jpg' }}" alt="" />
+        </div>
+        <div class="flex-1 min-w-0">
+            <div class="font-semibold text-sm text-gray-800">{{ formatUsing('name', '', post.preferredName, post.surname, 'Student', false, true) }}</div>
+            <div class="text-xs text-gray-600">
+                {{ formatUsing('relativeTime', post.timestampPublished) }}
+                {% if post.edited %}({{ __m('edited') }}){% endif %}
+                {% if post.pinned == 'Y' %}<span class="tag ml-2">{{ __m('Pinned') }}</span>{% endif %}
+                {% if post.mirroredFrom %}<span class="tag dull ml-2" title="{{ __m('Copied here by a sync link. Edit it in its own class.') }}">{{ __m('Synced from {class}', {'class': post.mirroredFrom}) }}</span>{% endif %}
+            </div>
+        </div>
+        {% if post.canEdit %}
+        <div class="cs-post-actions">
+            <a class="cs-action" href="{{ moduleURL }}/stream_post_edit.php&gibbonCourseClassID={{ gibbonCourseClassID }}&classStreamPostID={{ post.classStreamPostID }}" title="{{ __('Edit') }}">{{ icon('solid', 'edit', 'size-5') }}</a>
+            <form method="post" action="{{ processURL }}/stream_post_deleteProcess.php" class="inline" onsubmit="return confirm('{{ __m('Delete this post and its comments?')|e('js') }}');">
+                <input type="hidden" name="csrftoken" value="{{ csrftoken }}">
+                <input type="hidden" name="nonce" value="{{ nonce }}">
+                <input type="hidden" name="address" value="{{ address }}">
+                <input type="hidden" name="gibbonCourseClassID" value="{{ gibbonCourseClassID }}">
+                <input type="hidden" name="classStreamPostID" value="{{ post.classStreamPostID }}">
+                <button type="submit" class="cs-action cs-action-danger" title="{{ __('Delete') }}">{{ icon('solid', 'delete', 'size-5') }}</button>
+            </form>
+        </div>
+        {% endif %}
+    </header>
+
+    {% if post.type == 'Material' %}
+    <div class="cs-material-title">{{ icon('solid', 'document', 'size-5 inline-block mr-2 text-gray-500') }}{{ post.title }}</div>
+    {% endif %}
+
+    <div class="cs-post-body">
+        {{ post.body|raw }}
+    </div>
+
+    {% if post.attachments %}
+    <div class="cs-attachments">
+        {% for attachment in post.attachments %}
+            {% if attachment.type == 'Link' %}
+            <a class="cs-attachment" href="{{ attachment.location }}" target="_blank" rel="noopener noreferrer">
+                {{ icon('solid', 'link', 'size-5 text-gray-500 mr-2') }}
+                <span class="cs-attachment-text">
+                    <span class="cs-attachment-name">{{ attachment.name }}</span>
+                    <span class="cs-attachment-meta">{{ attachment.location|length > 60 ? attachment.location|slice(0, 60) ~ '…' : attachment.location }}</span>
+                </span>
+            </a>
+            {% else %}
+            <a class="cs-attachment" href="{{ absoluteURL }}/{{ attachment.location }}" target="_blank" rel="noopener noreferrer">
+                {{ icon('solid', 'document', 'size-5 text-gray-500 mr-2') }}
+                <span class="cs-attachment-text">
+                    <span class="cs-attachment-name">{{ attachment.name }}</span>
+                    <span class="cs-attachment-meta">{{ __m('File') }}</span>
+                </span>
+            </a>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {{ include('comments.twig.html', {'comments': post.comments, 'targetType': 'post', 'targetID': post.classStreamPostID}) }}
+</article>
