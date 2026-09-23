@@ -22,6 +22,7 @@ use Gibbon\Module\ClassStream\StreamAccess;
 use Gibbon\Module\ClassStream\Domain\PostGateway;
 use Gibbon\Module\ClassStream\Domain\CommentGateway;
 use Gibbon\Module\ClassStream\Domain\PlannerItemGateway;
+use Gibbon\Module\ClassStream\Domain\AssessmentItemGateway;
 
 require_once '../../gibbon.php';
 require_once __DIR__.'/moduleFunctions.php';
@@ -45,7 +46,7 @@ $gibbonModuleID = classStreamModuleID($container);
 $commentGateway = $container->get(CommentGateway::class);
 $comment = $commentGateway->getCommentByID($gibbonDiscussionID, $gibbonModuleID);
 
-// The comment's target (a post or a Planner lesson) must belong to this class, and the person
+// The comment's target (a post, Planner lesson or markbook assessment) must belong to this class, and the person
 // must be the comment's author or manage the class. The class check stops a comment being
 // deleted through a class the person manages when its target lives in one they do not.
 $targetClassID = null;
@@ -58,6 +59,10 @@ if (!empty($comment) && $comment['foreignTable'] == CommentGateway::TARGET_POST)
     $item = $container->get(PlannerItemGateway::class)->getItemByID($comment['foreignTableID']);
     $targetClassID = $item['gibbonCourseClassID'] ?? null;
     $fragment = '#planner'.$comment['foreignTableID'];
+} elseif (!empty($comment) && $comment['foreignTable'] == CommentGateway::TARGET_ASSESSMENT) {
+    $item = $container->get(AssessmentItemGateway::class)->getAssessmentByID($comment['foreignTableID']);
+    $targetClassID = $item['gibbonCourseClassID'] ?? null;
+    $fragment = '#assessment'.$comment['foreignTableID'];
 }
 
 if (empty($access) || empty($comment) || empty($targetClassID) || $targetClassID != $gibbonCourseClassID || !$streamAccess->canDeleteComment($access, $comment)) {

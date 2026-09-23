@@ -2,8 +2,8 @@
 Gibbon, Flexible & Open School System
 Copyright (C) 2010, Ross Parker
 
-Class Stream: one class's stream page. Banner, side panel, then a timeline of posts and Planner
-rows (post.twig.html / plannerItem.twig.html), each with its comments (comments.twig.html).
+Class Stream: one class's stream page. Banner, side panel, then a timeline of posts, Planner rows
+and markbook assessments, each with its comments.
 -->#}
 
 {% set moduleURL = absoluteURL ~ '/index.php?q=/modules/Class Stream' %}
@@ -86,8 +86,10 @@ rows (post.twig.html / plannerItem.twig.html), each with its comments (comments.
         {% for item in items %}
             {% if item.kind == 'post' %}
                 {{ include('post.twig.html', {'post': item}) }}
-            {% else %}
+            {% elseif item.kind == 'planner' %}
                 {{ include('plannerItem.twig.html', {'item': item}) }}
+            {% else %}
+                {{ include('assessmentItem.twig.html', {'item': item}) }}
             {% endif %}
         {% endfor %}
 

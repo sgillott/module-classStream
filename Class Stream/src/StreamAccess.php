@@ -198,6 +198,9 @@ class StreamAccess
         }
 
         $colourKey = Theme::keyForClass($gibbonCourseClassID, $stored['colour'] ?? null);
+        $assessmentTypes = isset($stored['assessmentTypes']) && $stored['assessmentTypes'] !== null
+            ? json_decode($stored['assessmentTypes'], true)
+            : null;
 
         return [
             'colourKey'      => $colourKey,
@@ -207,6 +210,8 @@ class StreamAccess
             'studentAccess'  => in_array($studentAccess, ['Post', 'Comment', 'None']) ? $studentAccess : 'Comment',
             'studentAccessStored' => $stored['studentAccess'] ?? '',
             'plannerDisplay' => $stored['plannerDisplay'] ?? 'Condensed',
+            'showAssessments' => in_array(($stored['showAssessments'] ?? 'Y'), ['Y', 'N'], true) ? ($stored['showAssessments'] ?? 'Y') : 'Y',
+            'assessmentTypes' => is_array($assessmentTypes) ? $assessmentTypes : ($assessmentTypes === null ? null : []),
         ];
     }
 

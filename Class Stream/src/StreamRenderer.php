@@ -14,13 +14,14 @@ use Gibbon\Module\ClassStream\Domain\PostGateway;
 use Gibbon\Module\ClassStream\Domain\ViewGateway;
 use Gibbon\Module\ClassStream\Domain\CommentGateway;
 use Gibbon\Module\ClassStream\Domain\PlannerItemGateway;
+use Gibbon\Module\ClassStream\Domain\AssessmentItemGateway;
 use Gibbon\Module\ClassStream\Domain\PostAttachmentGateway;
 
 /**
  * Stream Renderer
  *
- * Builds the HTML of one class's stream (banner, side panel, timeline of posts and Planner rows,
- * comments) for an access context already resolved by StreamAccess. Used by stream_view.php and
+ * Builds the HTML of one class's stream (banner, side panel, timeline of posts, Planner rows and
+ * markbook assessments, comments) for an access context already resolved by StreamAccess. Used by stream_view.php and
  * by the dashboard hook, so the two can never drift apart.
  *
  * @version v0.3.00
@@ -41,6 +42,7 @@ class StreamRenderer implements ContainerAwareInterface
     protected $viewGateway;
     protected $commentGateway;
     protected $plannerItemGateway;
+    protected $assessmentItemGateway;
     protected $attachmentGateway;
     protected $enrolmentGateway;
     protected $linkGateway;
@@ -55,6 +57,7 @@ class StreamRenderer implements ContainerAwareInterface
         ViewGateway $viewGateway,
         CommentGateway $commentGateway,
         PlannerItemGateway $plannerItemGateway,
+        AssessmentItemGateway $assessmentItemGateway,
         PostAttachmentGateway $attachmentGateway,
         CourseEnrolmentGateway $enrolmentGateway,
         LinkGateway $linkGateway
@@ -68,6 +71,7 @@ class StreamRenderer implements ContainerAwareInterface
         $this->viewGateway = $viewGateway;
         $this->commentGateway = $commentGateway;
         $this->plannerItemGateway = $plannerItemGateway;
+        $this->assessmentItemGateway = $assessmentItemGateway;
         $this->attachmentGateway = $attachmentGateway;
         $this->enrolmentGateway = $enrolmentGateway;
         $this->linkGateway = $linkGateway;
@@ -155,6 +159,12 @@ class StreamRenderer implements ContainerAwareInterface
             $plannerItems = $this->plannerItemGateway->selectItemsByClass($gibbonCourseClassID, $viewingAs, $showLessons)->fetchAll();
         }
 
+        $assessmentItems = [];
+        $assessmentTypes = $access['settings']['assessmentTypes'];
+        if ($access['settings']['showAssessments'] == 'Y' && (!is_array($assessmentTypes) || !empty($assessmentTypes))) {
+            $assessmentItems = $this->assessmentItemGateway->selectAssessmentsByClass($gibbonCourseClassID, $viewingAs, $assessmentTypes)->fetchAll();
+        }
+
         // TIMELINE
         // Pinned posts first, then posts and planner rows together by date, newest first; paged in PHP.
         $timeline = [];
@@ -169,6 +179,14 @@ class StreamRenderer implements ContainerAwareInterface
             $item['isHomework'] = $item['homework'] == 'Y';
             $timeline[] = $item;
         }
+        foreach ($assessmentItems as $item) {
+            $item['kind'] = 'assessment';
+            $item['sort'] = '0'.$item['date'].' 00:00:00 '.sprintf('%014d', (int) $item['gibbonMarkbookColumnID']);
+            if (trim((string) $item['name']) == '') {
+                $item['name'] = __m('Assessment');
+            }
+            $timeline[] = $item;
+        }
         usort($timeline, function ($a, $b) {
             return strcmp($b['sort'], $a['sort']);
         });
@@ -180,14 +198,17 @@ class StreamRenderer implements ContainerAwareInterface
         // ATTACHMENTS AND COMMENTS, for this page only
         $postIDs = [];
         $plannerIDs = [];
+        $assessmentIDs = [];
         foreach ($pageItems as $item) {
             if ($item['kind'] == 'post') $postIDs[] = $item['classStreamPostID'];
-            else $plannerIDs[] = $item['gibbonPlannerEntryID'];
+            elseif ($item['kind'] == 'planner') $plannerIDs[] = $item['gibbonPlannerEntryID'];
+            else $assessmentIDs[] = $item['gibbonMarkbookColumnID'];
         }
 
         $attachments = $this->attachmentGateway->selectAttachmentsByPosts($postIDs)->fetchGrouped();
         $postComments = $this->commentGateway->selectCommentsByTargets(CommentGateway::TARGET_POST, $postIDs, $gibbonModuleID)->fetchGrouped();
         $plannerComments = $this->commentGateway->selectCommentsByTargets(CommentGateway::TARGET_PLANNER, $plannerIDs, $gibbonModuleID)->fetchGrouped();
+        $assessmentComments = $this->commentGateway->selectCommentsByTargets(CommentGateway::TARGET_ASSESSMENT, $assessmentIDs, $gibbonModuleID)->fetchGrouped();
 
         $streamAccess = $this->streamAccess;
         $prepareComments = function (array $comments) use ($streamAccess, $access, $isParent, $parentView, $isOtherStudent, $redact) {
@@ -218,7 +239,7 @@ class StreamRenderer implements ContainerAwareInterface
                 $item['canEdit'] = $this->streamAccess->canEditPost($access, $item);
                 $item['mirroredFrom'] = !empty($item['sourceClassID']) && isset($mirrorSources[$item['sourceClassID']]) ? $mirrorSources[$item['sourceClassID']] : '';
                 $item['edited'] = !empty($item['timestampModified']) && $item['timestampModified'] != $item['timestamp'];
-            } else {
+            } elseif ($item['kind'] == 'planner') {
                 $id = $item['gibbonPlannerEntryID'];
                 $item['details'] = $plannerDisplay == 'Details'
                     ? $this->validator->sanitizeRichText($item['isHomework'] ? $item['homeworkDetails'] : $item['description'])
@@ -226,6 +247,10 @@ class StreamRenderer implements ContainerAwareInterface
                 $item['comments'] = $prepareComments($plannerComments[intval($id)] ?? []);
                 // The Planner's parent branch needs search=<child> or it refuses the page.
                 $item['plannerURL'] = Url::fromModuleRoute('Planner', 'planner_view_full')->withQueryParams(['gibbonPlannerEntryID' => $id, 'viewBy' => 'class', 'gibbonCourseClassID' => $gibbonCourseClassID] + ($isParent ? ['search' => $access['childID']] : []));
+            } else {
+                $id = $item['gibbonMarkbookColumnID'];
+                $item['details'] = $this->validator->sanitizeRichText($item['description']);
+                $item['comments'] = $prepareComments($assessmentComments[intval($id)] ?? []);
             }
             $pageItems[$index] = $item;
         }

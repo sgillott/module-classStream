@@ -98,8 +98,30 @@ $plannerOptions = [
     'Hidden'    => __m('Hide'),
 ];
 $row = $form->addRow();
-    $row->addLabel('plannerDisplay', __m('Planner on the stream'))->description($showLessons ? __m('How homework and lessons from the Planner appear on this stream.') : __m('How homework from the Planner appears on this stream.'));
+$row->addLabel('plannerDisplay', __m('Planner on the stream'))->description($showLessons ? __m('How homework and lessons from the Planner appear on this stream.') : __m('How homework from the Planner appears on this stream.'));
     $row->addSelect('plannerDisplay')->fromArray($plannerOptions)->selected($settings['plannerDisplay'])->required();
+
+$assessmentTypes = $pdo->select("SELECT DISTINCT type FROM gibbonMarkbookColumn WHERE type IS NOT NULL AND type<>'' ORDER BY type")->fetchAll(\PDO::FETCH_COLUMN);
+$assessmentTypeOptions = array_combine($assessmentTypes, $assessmentTypes) ?: [];
+$selectedAssessmentTypes = $settings['assessmentTypes'] ?? $assessmentTypes;
+$selectedAssessmentTypes = array_values(array_filter($selectedAssessmentTypes, function ($type) use ($assessmentTypes) {
+    return in_array($type, $assessmentTypes, true);
+}));
+
+$row = $form->addRow();
+    $row->addLabel('showAssessments', __m('Assessments on the stream'))
+        ->description(__m('Show markbook columns on this class stream as soon as they are created.'));
+    $row->addYesNo('showAssessments')->selected($settings['showAssessments'])->required();
+
+$row = $form->addRow();
+    $row->addClass('classStreamAssessmentTypes');
+    $row->addLabel('assessmentTypes', __m('Assessment types'))->description(__m('Choose which markbook types appear on this stream.'));
+    if (!empty($assessmentTypeOptions)) {
+        $row->addCheckbox('assessmentTypes')->fromArray($assessmentTypeOptions)->checked($selectedAssessmentTypes)->addCheckAllNone();
+    } else {
+        $row->addContent('<span class="text-xs text-gray-600">'.__m('No markbook assessment types have been used in this class yet.').'</span>');
+    }
+$form->toggleVisibilityByClass('classStreamAssessmentTypes')->onClick('showAssessments')->when('Y');
 
 // LINKED CLASSES
 // 1-way sync: posts made here are copied to the chosen classes. 2-way sync: posts made in either

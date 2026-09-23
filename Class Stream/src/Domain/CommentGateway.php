@@ -8,9 +8,9 @@ use Gibbon\Domain\QueryableGateway;
  * Comment Gateway
  *
  * Class comments live in core's general-purpose gibbonDiscussion table. A comment hangs off one
- * of two targets: a stream post (foreignTable 'classStreamPost') or a Planner lesson shown on the
- * stream (foreignTable 'gibbonPlannerEntry'). Every row this module writes carries its own
- * gibbonModuleID, and every read filters on it, so rows another module may keep against the same
+ * of three targets: a stream post (foreignTable 'classStreamPost'), a Planner lesson shown on the
+ * stream (foreignTable 'gibbonPlannerEntry'), or a Markbook column shown as an assessment. Every
+ * row this module writes carries its own gibbonModuleID, and every read filters on it, so rows another module may keep against the same
  * tables are never touched. Core's DiscussionGateway reads one context at a time; this adds the
  * bulk reads a stream page needs.
  *
@@ -23,6 +23,7 @@ class CommentGateway extends QueryableGateway
 
     const TARGET_POST = 'classStreamPost';
     const TARGET_PLANNER = 'gibbonPlannerEntry';
+    const TARGET_ASSESSMENT = 'gibbonMarkbookColumn';
 
     private static $tableName = 'gibbonDiscussion';
     private static $primaryKey = 'gibbonDiscussionID';

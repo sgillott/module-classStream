@@ -1,6 +1,10 @@
 CHANGELOG
 =========
 
+v0.9.00
+-------
+Markbook assessments can appear live on each class stream, filtered by the class teacher's selected assessment types.
+
 v0.8.01
 -------
 Runs on Gibbon v30 as well as v31: two class queries that only v31 core provides are now the module's own.

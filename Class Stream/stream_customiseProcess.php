@@ -49,18 +49,32 @@ if (empty($access) || !$access['canManage']) {
 $colour = $_POST['colour'] ?? '';
 $studentAccess = $_POST['studentAccess'] ?? '';
 $plannerDisplay = $_POST['plannerDisplay'] ?? '';
+$showAssessments = $_POST['showAssessments'] ?? '';
 
 if (!isset(Theme::PALETTE[$colour])
     || !in_array($studentAccess, ['', 'Post', 'Comment', 'None'], true)
-    || !in_array($plannerDisplay, ['Details', 'Condensed', 'Hidden'], true)) {
+    || !in_array($plannerDisplay, ['Details', 'Condensed', 'Hidden'], true)
+    || !in_array($showAssessments, ['Y', 'N'], true)) {
     header("Location: {$URLBack}&return=error1");
     exit;
 }
 
+$availableAssessmentTypes = $pdo->select("SELECT DISTINCT type FROM gibbonMarkbookColumn WHERE type IS NOT NULL AND type<>'' ORDER BY type")->fetchAll(\PDO::FETCH_COLUMN);
+$assessmentTypes = $access['settings']['assessmentTypes'];
+if (!empty($availableAssessmentTypes)) {
+    $postedAssessmentTypes = $_POST['assessmentTypes'] ?? [];
+    $postedAssessmentTypes = is_array($postedAssessmentTypes) ? array_unique(array_map('strval', $postedAssessmentTypes)) : [];
+    $assessmentTypes = array_values(array_filter($postedAssessmentTypes, function ($type) use ($availableAssessmentTypes) {
+        return in_array($type, $availableAssessmentTypes, true);
+    }));
+}
+
 $data = [
-    'colour'         => $colour,
-    'studentAccess'  => $studentAccess != '' ? $studentAccess : null,
-    'plannerDisplay' => $plannerDisplay,
+    'colour'          => $colour,
+    'studentAccess'   => $studentAccess != '' ? $studentAccess : null,
+    'plannerDisplay'  => $plannerDisplay,
+    'showAssessments' => $showAssessments,
+    'assessmentTypes' => $assessmentTypes === null ? null : json_encode($assessmentTypes),
 ];
 
 // Header image: keep the current one unless a new file arrives, or the form's own delete control

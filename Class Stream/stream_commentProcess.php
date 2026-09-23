@@ -22,6 +22,7 @@ use Gibbon\Module\ClassStream\StreamAccess;
 use Gibbon\Module\ClassStream\Domain\PostGateway;
 use Gibbon\Module\ClassStream\Domain\CommentGateway;
 use Gibbon\Module\ClassStream\Domain\PlannerItemGateway;
+use Gibbon\Module\ClassStream\Domain\AssessmentItemGateway;
 
 require_once '../../gibbon.php';
 require_once __DIR__.'/moduleFunctions.php';
@@ -32,7 +33,9 @@ $gibbonCourseClassID = $_POST['gibbonCourseClassID'] ?? '';
 $targetType = $_POST['targetType'] ?? '';
 $targetID = $_POST['targetID'] ?? '';
 $URL = classStreamViewURL($session, $gibbonCourseClassID);
-$fragment = '#'.($targetType == 'planner' ? 'planner' : 'post').$targetID;
+$fragmentPrefixes = ['post' => 'post', 'planner' => 'planner', 'assessment' => 'assessment'];
+$fragmentPrefix = is_string($targetType) && isset($fragmentPrefixes[$targetType]) ? $fragmentPrefixes[$targetType] : 'post';
+$fragment = '#'.$fragmentPrefix.$targetID;
 
 if (isActionAccessible($guid, $connection2, '/modules/Class Stream/stream_view.php') == false) {
     header("Location: {$URL}&return=error0");
@@ -47,8 +50,8 @@ if (empty($access) || !$access['canComment']) {
     exit;
 }
 
-// The target must be a post of this class, or a Planner lesson of this class that the person's
-// role may see (the Planner's own viewable flags), so nobody comments on a lesson hidden from them.
+// The target must belong to this class and be visible to the person's role where the source
+// supports role-specific visibility, so nobody comments on a hidden Planner or markbook item.
 if ($targetType == 'post') {
     $post = $container->get(PostGateway::class)->getPostByID($targetID);
     $targetValid = !empty($post) && $post['gibbonCourseClassID'] == $gibbonCourseClassID;
@@ -57,6 +60,10 @@ if ($targetType == 'post') {
     $item = $container->get(PlannerItemGateway::class)->getItemByID($targetID);
     $targetValid = !empty($item) && $item['gibbonCourseClassID'] == $gibbonCourseClassID && PlannerItemGateway::isVisibleTo($item, $access['viewingAs']);
     $foreignTable = CommentGateway::TARGET_PLANNER;
+} elseif ($targetType == 'assessment') {
+    $item = $container->get(AssessmentItemGateway::class)->getAssessmentByID($targetID);
+    $targetValid = !empty($item) && $item['gibbonCourseClassID'] == $gibbonCourseClassID && AssessmentItemGateway::isVisibleTo($item, $access['viewingAs']);
+    $foreignTable = CommentGateway::TARGET_ASSESSMENT;
 } else {
     $targetValid = false;
 }

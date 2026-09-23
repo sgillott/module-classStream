@@ -1,0 +1,31 @@
+{#<!--
+Gibbon, Flexible & Open School System
+Copyright (C) 2010, Ross Parker
+
+Class Stream: one live Markbook column on the stream.
+Expects item, plus the page-level variables of stream.twig.html.
+-->#}
+
+<article class="cs-post cs-planner" id="assessment{{ item.gibbonMarkbookColumnID }}">
+    <header class="cs-post-header">
+        <div class="cs-planner-icon">{{ icon('solid', 'markbook', 'size-5') }}</div>
+        <div class="flex-1 min-w-0">
+            <div class="text-sm text-gray-800">
+                <span class="font-semibold">{{ formatUsing('name', '', item.preferredName, item.surname, 'Staff', false, true) }}</span>
+                {{ __m('posted an assessment:') }}
+                <span class="font-semibold">{{ item.name }}</span>
+            </div>
+            <div class="text-xs text-gray-600">
+                {{ formatUsing('date', item.date) }} &middot; {{ item.type }}
+            </div>
+        </div>
+    </header>
+
+    {% if item.details %}
+    <div class="cs-post-body">
+        {{ item.details|raw }}
+    </div>
+    {% endif %}
+
+    {{ include('comments.twig.html', {'comments': item.comments, 'targetType': 'assessment', 'targetID': item.gibbonMarkbookColumnID}) }}
+</article>

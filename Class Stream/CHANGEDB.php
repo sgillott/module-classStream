@@ -130,3 +130,13 @@ $count++;
 $sql[$count][0] = "0.8.01";
 $sql[$count][1] = "-- Code only: the module no longer calls two core methods that Gibbon v30 does not have
 -- (CourseGateway::getCourseClassInfoByID and CourseClassPersonGateway), so it runs on v30 and v31.";
+
+// v0.9.00
+$count++;
+$sql[$count][0] = "0.9.00";
+$sql[$count][1] = "ALTER TABLE classStreamClass
+    ADD COLUMN showAssessments enum('N','Y') NOT NULL DEFAULT 'Y' AFTER plannerDisplay,
+    ADD COLUMN assessmentTypes text DEFAULT NULL AFTER showAssessments
+;end
+-- Assessment rows are read live from markbook columns. Existing classes receive the enabled
+-- default; a NULL assessmentTypes value means all types currently used in that class.";
