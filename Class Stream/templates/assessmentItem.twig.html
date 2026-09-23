@@ -14,9 +14,10 @@ Expects item, plus the page-level variables of stream.twig.html.
                 <span class="font-semibold">{{ formatUsing('name', '', item.preferredName, item.surname, 'Staff', false, true) }}</span>
                 {{ __m('posted an assessment:') }}
                 <span class="font-semibold">{{ item.name }}</span>
+                {{ __m('on') }} <strong>{{ formatUsing('date', item.date) }}</strong>
             </div>
             <div class="text-xs text-gray-600">
-                {{ formatUsing('date', item.date) }} &middot; {{ item.type }}
+                {{ formatUsing('date', item.classDate) }}
             </div>
         </div>
     </header>
@@ -24,6 +25,18 @@ Expects item, plus the page-level variables of stream.twig.html.
     {% if item.details %}
     <div class="cs-post-body">
         {{ item.details|raw }}
+    </div>
+    {% endif %}
+
+    {% if item.attachmentURL %}
+    <div class="cs-post-body pt-0">
+        <a href="{{ item.attachmentURL }}" target="_blank" rel="noopener">{{ item.attachmentName }}</a>
+    </div>
+    {% endif %}
+
+    {% if item.markbookURL %}
+    <div class="cs-post-body pt-0">
+        <a href="{{ item.markbookURL }}">{{ __m('View in Markbook') }}</a>
     </div>
     {% endif %}
 

@@ -12,19 +12,39 @@ Expects item, plus the page-level variables of stream.twig.html.
         <div class="flex-1 min-w-0">
             <div class="text-sm text-gray-800">
                 <span class="font-semibold">{{ formatUsing('name', '', item.preferredName, item.surname, 'Staff', false, true) }}</span>
-                {{ item.isHomework ? __m('posted new homework:') : __m('posted a new lesson:') }}
-                <a class="font-semibold" href="{{ item.plannerURL }}">{{ item.name }}</a>
+                {% if item.isHomework %}
+                    {{ __m('posted new homework, due {date}', {'date': formatUsing('date', item.homeworkDueDateTime)}) }}
+                    {% if item.homeworkDueDateTime and item.homeworkDueDateTime|slice(11, 8) not in ['00:00:00', '21:00:00'] %}
+                        {{ __m('at {time}', {'time': formatUsing('time', item.homeworkDueDateTime)}) }}
+                    {% endif %}
+                    {% if item.homeworkTimeCap %}
+                        &middot; {{ __m('Time cap: {minutes} min', {'minutes': item.homeworkTimeCap}) }}
+                    {% endif %}
+                {% else %}
+                    {{ __m('posted a new lesson:') }}
+                    <a class="font-semibold" href="{{ item.plannerURL }}">{{ item.name }}</a>
+                {% endif %}
             </div>
             <div class="text-xs text-gray-600">
-                {{ formatUsing('date', item.date) }}
-                {% if item.isHomework and item.homeworkDueDateTime %}
-                    &middot; {{ __m('Due {date}', {'date': formatUsing('dateTime', item.homeworkDueDateTime)}) }}
+                {% if item.isHomework %}
+                    {{ formatUsing('date', item.date) }}
+                {% else %}
+                    {{ formatUsing('date', item.date) }}
                 {% endif %}
             </div>
         </div>
     </header>
 
-    {% if item.details %}
+    {% if item.isHomework %}
+    <div class="cs-post-body">
+        {% if item.details %}
+            <div class="cs-homework-content">{{ item.details|raw }}</div>
+        {% endif %}
+    </div>
+    <div class="cs-post-body pt-0">
+        <a href="{{ item.plannerURL }}">{{ __m('View linked lesson') }}</a>
+    </div>
+    {% elseif item.details %}
     <div class="cs-post-body">
         {{ item.details|raw }}
     </div>

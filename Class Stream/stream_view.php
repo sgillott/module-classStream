@@ -47,11 +47,13 @@ $page->breadcrumbs
     ->add($className);
 
 $plannerAccessible = isActionAccessible($guid, $connection2, '/modules/Planner/planner.php');
+$canViewMarkbook = isActionAccessible($guid, $connection2, '/modules/Markbook/markbook_view.php');
+$canEditMarkbookData = isActionAccessible($guid, $connection2, '/modules/Markbook/markbook_edit_data.php');
 $links = StreamRenderer::quickLinks(
     $gibbonCourseClassID,
     $plannerAccessible,
     isActionAccessible($guid, $connection2, '/modules/Departments/department_course_class.php'),
-    isActionAccessible($guid, $connection2, '/modules/Markbook/markbook_view.php'),
+    $canViewMarkbook,
     $isParent ? $access['childID'] : ''
 );
 
@@ -62,5 +64,8 @@ echo $container->get(StreamRenderer::class)->render(
     $page,
     intval($_GET['page'] ?? 1),
     $gibbonPersonIDStudent,
-    classStreamModuleID($container)
+    classStreamModuleID($container),
+    [],
+    $canViewMarkbook,
+    $canEditMarkbookData
 );

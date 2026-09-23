@@ -32,10 +32,15 @@ class AssessmentItemGateway extends QueryableGateway
             $typeFilter = ' AND mc.type IN ('.implode(',', $placeholders).')';
         }
 
-        $sql = "SELECT mc.gibbonMarkbookColumnID, mc.gibbonCourseClassID, mc.name, mc.description,
+        $sql = "SELECT mc.gibbonMarkbookColumnID, mc.gibbonCourseClassID, mc.gibbonPlannerEntryID, mc.name, mc.description,
                     mc.type, mc.date, mc.viewableStudents, mc.viewableParents,
+                    plannerEntry.date AS plannerDate,
+                    COALESCE(file.filePath, mc.attachment) AS attachmentPath, file.fileName AS attachmentName,
                     creator.gibbonPersonID AS gibbonPersonIDCreator, creator.title, creator.preferredName, creator.surname
                 FROM gibbonMarkbookColumn AS mc
+                LEFT JOIN gibbonPlannerEntry AS plannerEntry ON (plannerEntry.gibbonPlannerEntryID=mc.gibbonPlannerEntryID)
+                LEFT JOIN gibbonFilePointer AS filePointer ON (filePointer.foreignTable='gibbonMarkbookColumn' AND filePointer.foreignTableID=mc.gibbonMarkbookColumnID AND filePointer.foreignColumn='attachment')
+                LEFT JOIN gibbonFile AS file ON (file.gibbonFileID=filePointer.gibbonFileID)
                 JOIN gibbonPerson AS creator ON (creator.gibbonPersonID=mc.gibbonPersonIDCreator)
                 WHERE mc.gibbonCourseClassID=:gibbonCourseClassID
                 AND mc.date IS NOT NULL".$typeFilter.$this->visibilityClause($viewingAs)."

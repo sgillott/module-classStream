@@ -88,7 +88,7 @@ class StreamRenderer implements ContainerAwareInterface
      * @param string $gibbonModuleID  This module's ID, for the gibbonDiscussion rows.
      * @param array  $extra      Extra template variables (the dashboard hook adds a heading).
      */
-    public function render(array $access, array $links, bool $plannerAccessible, $page, int $pageNumber, $gibbonPersonIDStudent, $gibbonModuleID, array $extra = []): string
+    public function render(array $access, array $links, bool $plannerAccessible, $page, int $pageNumber, $gibbonPersonIDStudent, $gibbonModuleID, array $extra = [], bool $canViewMarkbook = false, bool $canEditMarkbookData = false): string
     {
         $class = $access['class'];
         $gibbonCourseClassID = $class['gibbonCourseClassID'];
@@ -165,6 +165,12 @@ class StreamRenderer implements ContainerAwareInterface
             $assessmentItems = $this->assessmentItemGateway->selectAssessmentsByClass($gibbonCourseClassID, $viewingAs, $assessmentTypes)->fetchAll();
         }
 
+        // A markbook column can be linked to its Planner lesson. When the assessment is visible
+        // on the stream, omit that lesson row so students see one assessment announcement.
+        $assessmentPlannerIDs = array_fill_keys(array_filter(array_map(function ($item) {
+            return (int) ($item['gibbonPlannerEntryID'] ?? 0);
+        }, $assessmentItems)), true);
+
         // TIMELINE
         // Pinned posts first, then posts and planner rows together by date, newest first; paged in PHP.
         $timeline = [];
@@ -174,6 +180,9 @@ class StreamRenderer implements ContainerAwareInterface
             $timeline[] = $post;
         }
         foreach ($plannerItems as $item) {
+            if ($item['homework'] != 'Y' && isset($assessmentPlannerIDs[(int) $item['gibbonPlannerEntryID']])) {
+                continue;
+            }
             $item['kind'] = 'planner';
             $item['sort'] = '0'.$item['date'].' '.($item['timeStart'] ?: '00:00:00');
             $item['isHomework'] = $item['homework'] == 'Y';
@@ -182,8 +191,20 @@ class StreamRenderer implements ContainerAwareInterface
         foreach ($assessmentItems as $item) {
             $item['kind'] = 'assessment';
             $item['sort'] = '0'.$item['date'].' 00:00:00 '.sprintf('%014d', (int) $item['gibbonMarkbookColumnID']);
+            $item['classDate'] = !empty($item['plannerDate']) ? $item['plannerDate'] : date('Y-m-d');
             if (trim((string) $item['name']) == '') {
                 $item['name'] = __m('Assessment');
+            }
+            if (($access['isStaff'] || $access['role'] == 'Department') && $canEditMarkbookData) {
+                $item['markbookURL'] = Url::fromModuleRoute('Markbook', 'markbook_edit_data')->withQueryParams([
+                    'gibbonCourseClassID' => $gibbonCourseClassID,
+                    'gibbonMarkbookColumnID' => $item['gibbonMarkbookColumnID'],
+                ]);
+            } elseif ($canViewMarkbook) {
+                $markbookQuery = $access['role'] == 'Parent' ? ['search' => $access['childID']] : [];
+                $item['markbookURL'] = Url::fromModuleRoute('Markbook', 'markbook_view')->withQueryParams($markbookQuery);
+            } else {
+                $item['markbookURL'] = '';
             }
             $timeline[] = $item;
         }
@@ -241,7 +262,7 @@ class StreamRenderer implements ContainerAwareInterface
                 $item['edited'] = !empty($item['timestampModified']) && $item['timestampModified'] != $item['timestamp'];
             } elseif ($item['kind'] == 'planner') {
                 $id = $item['gibbonPlannerEntryID'];
-                $item['details'] = $plannerDisplay == 'Details'
+                $item['details'] = ($item['isHomework'] || $plannerDisplay == 'Details')
                     ? $this->validator->sanitizeRichText($item['isHomework'] ? $item['homeworkDetails'] : $item['description'])
                     : '';
                 $item['comments'] = $prepareComments($plannerComments[intval($id)] ?? []);
@@ -250,6 +271,12 @@ class StreamRenderer implements ContainerAwareInterface
             } else {
                 $id = $item['gibbonMarkbookColumnID'];
                 $item['details'] = $this->validator->sanitizeRichText($item['description']);
+                $item['attachmentURL'] = !empty($item['attachmentPath'])
+                    ? rtrim($this->session->get('absoluteURL'), '/').'/'.$item['attachmentPath']
+                    : '';
+                if (empty($item['attachmentName']) && !empty($item['attachmentPath'])) {
+                    $item['attachmentName'] = basename($item['attachmentPath']);
+                }
                 $item['comments'] = $prepareComments($assessmentComments[intval($id)] ?? []);
             }
             $pageItems[$index] = $item;

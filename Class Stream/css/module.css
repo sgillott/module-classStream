@@ -87,6 +87,7 @@
 .cs-planner { background: #f8f9fa; }
 .cs-planner .cs-post-header { padding-bottom: 14px; }
 .cs-planner-icon { width: 40px; height: 40px; border-radius: 50%; background: #e8f0fe; color: #1967d2; display: flex; align-items: center; justify-content: center; flex: none; }
+.cs-homework-content { max-width: 100%; overflow-x: auto; }
 
 /* New-post badge on a card, and the dashboard tab */
 .cs-card-header { position: relative; }

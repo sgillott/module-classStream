@@ -127,18 +127,20 @@ if (count($current) == 1) {
 
     if (!empty($access)) {
         $plannerAccessible = isActionAccessible($guid, $connection2, '/modules/Planner/planner.php');
+        $canViewMarkbook = isActionAccessible($guid, $connection2, '/modules/Markbook/markbook_view.php');
+        $canEditMarkbookData = isActionAccessible($guid, $connection2, '/modules/Markbook/markbook_edit_data.php');
         $links = StreamRenderer::quickLinks(
             $lesson['gibbonCourseClassID'],
             $plannerAccessible,
             isActionAccessible($guid, $connection2, '/modules/Departments/department_course_class.php'),
-            isActionAccessible($guid, $connection2, '/modules/Markbook/markbook_view.php')
+            $canViewMarkbook
         );
 
         $output .= '<div class="cs-dashboard-banner">'
             .'<span>'.__m('You are in {class} now ({period}, {start} – {end}).', ['class' => htmlspecialchars($lesson['course'].'.'.$lesson['class']), 'period' => htmlspecialchars($lesson['period']), 'start' => substr($lesson['timeStart'], 0, 5), 'end' => substr($lesson['timeEnd'], 0, 5)]).'</span>'
             .'<a href="'.$moduleURL.'/stream.php">'.__m('All my streams').'</a>'
             .'</div>';
-        $output .= $container->get(StreamRenderer::class)->render($access, $links, $plannerAccessible, $page, 1, '', classStreamModuleID($container));
+        $output .= $container->get(StreamRenderer::class)->render($access, $links, $plannerAccessible, $page, 1, '', classStreamModuleID($container), [], $canViewMarkbook, $canEditMarkbookData);
 
         return '<div class="cs-dashboard">'.$output.'</div>';
     }

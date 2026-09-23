@@ -23,7 +23,7 @@ class PlannerItemGateway extends QueryableGateway
     private static $primaryKey = 'gibbonPlannerEntryID';
 
     const COLS = "gibbonPlannerEntry.gibbonPlannerEntryID, gibbonPlannerEntry.gibbonCourseClassID, gibbonPlannerEntry.name, gibbonPlannerEntry.date, gibbonPlannerEntry.timeStart, gibbonPlannerEntry.timeEnd,
-        gibbonPlannerEntry.description, gibbonPlannerEntry.homework, gibbonPlannerEntry.homeworkDueDateTime, gibbonPlannerEntry.homeworkDetails, gibbonPlannerEntry.homeworkSubmission,
+        gibbonPlannerEntry.description, gibbonPlannerEntry.homework, gibbonPlannerEntry.homeworkDueDateTime, gibbonPlannerEntry.homeworkDetails, gibbonPlannerEntry.homeworkTimeCap, gibbonPlannerEntry.homeworkSubmission,
         gibbonPlannerEntry.viewableStudents, gibbonPlannerEntry.viewableParents,
         creator.gibbonPersonID AS gibbonPersonIDCreator, creator.title, creator.preferredName, creator.surname, creator.image_240";
 
