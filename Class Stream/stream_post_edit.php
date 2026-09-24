@@ -68,7 +68,7 @@ $row = $form->addRow()->addClass('materialTitle');
 
 $col = $form->addRow()->addColumn();
     $col->addLabel('body', __m('Post'));
-    $col->addEditor('body', $guid)->setRows(10)->required()->setValue($post['body']);
+    $col->addEditor('body', $guid)->setRows(10)->showMedia()->required()->setValue($post['body']);
 
 // Existing attachments, each with its own remove button. The button posts to a different script
 // than the form's own action, so it uses formaction and skips the form's validation.
@@ -102,12 +102,12 @@ $row = $form->addRow();
 if ($access['canManage']) {
     $row = $form->addRow();
         $row->addLabel('pinned', __m('Pin to top'));
-        $row->addCheckbox('pinned')->setValue('Y')->checked($post['pinned']);
+        $row->addYesNo('pinned')->checked($post['pinned'] == 'Y' ? 'Y' : 'N');
 }
 
 $row = $form->addRow();
-    $row->addLabel('parentsCanView', __m('Parents can view'))->description(__m('Turn off to keep this post out of parents\' view of the stream.'));
-    $row->addCheckbox('parentsCanView')->setValue('Y')->checked($post['parentsCanView'] != 'N');
+    $row->addLabel('parentsCanView', __m('Parents can view'))->description(__m('Switch off to keep this post out of parents\' view of the stream.'));
+    $row->addYesNo('parentsCanView')->checked($post['parentsCanView'] != 'N' ? 'Y' : 'N');
 
 // A published post stays published unless the teacher changes it here; a scheduled one shows its time.
 $isDraft = empty($post['timestampPublished']);

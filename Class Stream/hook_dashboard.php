@@ -55,6 +55,15 @@ $connection2 = $container->get('db')->getConnection();
 $container->get('twig')->getLoader()->prependPath($session->get('absolutePath').'/modules/Class Stream/templates');
 $page->stylesheets->add('classStream', 'modules/Class Stream/css/module.css');
 
+// Core's sidebar/breadcrumb navigation is htmx-boosted with hx-select="#content-wrap": it fetches
+// the whole page but grafts in only that one element, so anything this hook adds to $page->stylesheets
+// (which renders into <head>, outside #content-wrap) is silently dropped whenever the Dashboard is
+// reached that way rather than by a full page load. This tiny inline script travels inside the
+// swapped content itself, so it survives either way, and only touches <head> if the link is missing.
+$cssVersion = @filemtime($session->get('absolutePath').'/modules/Class Stream/css/module.css') ?: 1;
+$cssHref = htmlspecialchars($session->get('absoluteURL').'/modules/Class Stream/css/module.css?v='.$cssVersion);
+$cssGuard = '<script>(function(){if(!document.getElementById("classStreamCss")){var l=document.createElement("link");l.id="classStreamCss";l.rel="stylesheet";l.href="'.$cssHref.'";document.head.appendChild(l);}})();</script>';
+
 $scope = classStreamScope($guid, $connection2);
 if ($scope === false) {
     return '';
@@ -90,7 +99,7 @@ if ($scope == 'parent') {
             'gibbonPersonIDStudent' => $child['gibbonPersonID'],
         ]);
     }
-    return '<div class="cs-dashboard">'.$output.'</div>';
+    return '<div class="cs-dashboard">'.$cssGuard.$output.'</div>';
 }
 
 // STAFF AND STUDENTS: what is on the timetable now?
@@ -142,7 +151,7 @@ if (count($current) == 1) {
             .'</div>';
         $output .= $container->get(StreamRenderer::class)->render($access, $links, $plannerAccessible, $page, 1, '', classStreamModuleID($container), [], $canViewMarkbook, $canEditMarkbookData);
 
-        return '<div class="cs-dashboard">'.$output.'</div>';
+        return '<div class="cs-dashboard">'.$cssGuard.$output.'</div>';
     }
 }
 
@@ -161,4 +170,4 @@ $output .= $page->fetchFromTemplate('streamCards.twig.html', [
     'gibbonPersonIDStudent' => '',
 ]);
 
-return '<div class="cs-dashboard">'.$output.'</div>';
+return '<div class="cs-dashboard">'.$cssGuard.$output.'</div>';

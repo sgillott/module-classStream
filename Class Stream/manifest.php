@@ -25,7 +25,7 @@ $description = 'A Google Classroom-style stream for every class: announcements w
 $entryURL    = 'stream.php';
 $type        = 'Additional';
 $category    = 'Learn';
-$version     = '0.10.00';
+$version     = '0.10.01';
 $author      = 'Steve Gillott';
 $url         = '';
 

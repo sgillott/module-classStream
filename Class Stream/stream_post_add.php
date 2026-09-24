@@ -68,7 +68,7 @@ $form->toggleVisibilityByClass('postOnlyFields')->onSelect('type')->when(['Annou
 
 $col = $form->addRow()->addClass('postOnlyFields')->addColumn();
     $col->addLabel('body', __m('Post'));
-    $col->addEditor('body', $guid)->setRows(10)->required();
+    $col->addEditor('body', $guid)->setRows(10)->showMedia()->required();
 
 $col = $form->addRow()->addClass('postOnlyFields')->addColumn();
     $col->addLabel('links', __m('Links'))->description(__m('One web address per line, starting with http:// or https://'));
@@ -81,12 +81,12 @@ $row = $form->addRow()->addClass('postOnlyFields');
 if ($access['canManage']) {
     $row = $form->addRow()->addClass('postOnlyFields');
         $row->addLabel('pinned', __m('Pin to top'))->description(__m('Pinned posts stay above everything else on the stream.'));
-        $row->addCheckbox('pinned')->setValue('Y');
+        $row->addYesNo('pinned')->checked('N');
 }
 
 $row = $form->addRow()->addClass('postOnlyFields');
-    $row->addLabel('parentsCanView', __m('Parents can view'))->description(__m('Turn off to keep this post out of parents\' view of the stream.'));
-    $row->addCheckbox('parentsCanView')->setValue('Y')->checked(true);
+    $row->addLabel('parentsCanView', __m('Parents can view'))->description(__m('Switch off to keep this post out of parents\' view of the stream.'));
+    $row->addYesNo('parentsCanView')->checked('Y');
 
 // When it goes on the stream: now, a draft to finish later, or a chosen date and time. A
 // scheduled post is announced to the class on the first stream view after its time.
@@ -118,7 +118,7 @@ if ($access['canManage']) {
 
     $col = $form->addRow()->addClass('homeworkFields')->addColumn();
         $col->addLabel('homeworkDetails', __m('Homework Details'));
-        $col->addEditor('homeworkDetails', $guid)->setRows(10)->required();
+        $col->addEditor('homeworkDetails', $guid)->setRows(10)->showMedia()->required();
 
     $form->toggleVisibilityByClass('homeworkSubmissionFields')->onSelect('homeworkSubmission')->when('Y');
     $row = $form->addRow()->addClass('homeworkFields');
