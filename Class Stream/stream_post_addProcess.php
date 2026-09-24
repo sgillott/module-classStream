@@ -24,7 +24,7 @@ use Gibbon\Module\ClassStream\Domain\PostGateway;
 require_once '../../gibbon.php';
 require_once __DIR__.'/moduleFunctions.php';
 
-$_POST = $container->get(Validator::class)->sanitize($_POST, ['body' => 'HTML']);
+$_POST = $container->get(Validator::class)->sanitize($_POST, ['body' => 'HTML', 'homeworkDetails' => 'HTML']);
 
 $gibbonCourseClassID = $_POST['gibbonCourseClassID'] ?? '';
 $URL = classStreamViewURL($session, $gibbonCourseClassID);
@@ -43,8 +43,55 @@ if (empty($access) || !$access['canPost']) {
     exit;
 }
 
+$type = $_POST['type'] ?? '';
+if (!in_array($type, ['Announcement', 'Material', 'Homework']) || ($type == 'Homework' && !$access['canManage'])) {
+    $type = 'Announcement';
+}
+
+// Homework never becomes a stream post: it writes straight to the Planner, reusing (or creating)
+// the entry on the class's most recent lesson, and shows on the stream through the same homework
+// card a Planner-made lesson already gets.
+if ($type == 'Homework') {
+    $homeworkDetails = $_POST['homeworkDetails'] ?? '';
+    $homeworkDueDateTime = classStreamHomeworkDueDateTime($_POST['homeworkDueDate'] ?? '', $_POST['homeworkDueDateTime'] ?? '');
+
+    if (trim(strip_tags($homeworkDetails)) == '' || empty($homeworkDueDateTime)) {
+        header("Location: {$URLBack}&return=error1");
+        exit;
+    }
+
+    $submission = ($_POST['homeworkSubmission'] ?? '') == 'Y';
+    $submissionType = $_POST['homeworkSubmissionType'] ?? '';
+    if (!in_array($submissionType, ['Link', 'File', 'Link/File'])) {
+        $submissionType = 'Link/File';
+    }
+    $submissionRequired = $_POST['homeworkSubmissionRequired'] ?? '';
+    if (!in_array($submissionRequired, ['Optional', 'Required'])) {
+        $submissionRequired = 'Required';
+    }
+
+    $homework = [
+        'homeworkDueDateTime'        => $homeworkDueDateTime,
+        'homeworkDetails'            => $homeworkDetails,
+        'homeworkTimeCap'            => !empty($_POST['homeworkTimeCap']) ? intval($_POST['homeworkTimeCap']) : null,
+        'homeworkSubmission'         => $submission ? 'Y' : 'N',
+        'homeworkSubmissionDateOpen' => $submission ? date('Y-m-d') : null,
+        'homeworkSubmissionType'     => $submission ? $submissionType : '',
+        'homeworkSubmissionRequired' => $submission ? $submissionRequired : null,
+    ];
+
+    $gibbonPlannerEntryID = classStreamSaveHomework($container, $session->get('gibbonPersonID'), $access['class'], $homework);
+
+    if (empty($gibbonPlannerEntryID)) {
+        header("Location: {$URLBack}&return=error2");
+        exit;
+    }
+
+    header("Location: {$URL}&return=success0#planner".sprintf('%014d', $gibbonPlannerEntryID));
+    exit;
+}
+
 $body = $_POST['body'] ?? '';
-$type = ($_POST['type'] ?? '') == 'Material' ? 'Material' : 'Announcement';
 $title = $type == 'Material' ? mb_substr(trim($_POST['title'] ?? ''), 0, 120) : null;
 
 if (trim(strip_tags($body, '<img><iframe>')) == '' || ($type == 'Material' && $title == '')) {
@@ -62,6 +109,7 @@ $data = [
     'title'               => $title,
     'body'                => $body,
     'pinned'              => ($access['canManage'] && ($_POST['pinned'] ?? '') == 'Y') ? 'Y' : 'N',
+    'parentsCanView'      => ($_POST['parentsCanView'] ?? '') == 'Y' ? 'Y' : 'N',
     'timestamp'           => date('Y-m-d H:i:s'),
     'timestampModified'   => date('Y-m-d H:i:s'),
     'timestampPublished'  => classStreamPublishTime($_POST['publish'] ?? 'now', $_POST['publishDate'] ?? '', $_POST['publishTime'] ?? ''),

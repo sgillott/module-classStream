@@ -22,6 +22,7 @@ use Gibbon\Domain\System\ModuleGateway;
 use Gibbon\Services\Format;
 use Gibbon\Comms\NotificationSender;
 use Gibbon\Domain\System\SettingGateway;
+use Gibbon\Domain\Planner\PlannerEntryGateway;
 use Gibbon\Module\ClassStream\Theme;
 use Gibbon\Module\ClassStream\Domain\LinkGateway;
 use Gibbon\Module\ClassStream\Domain\PostGateway;
@@ -209,6 +210,7 @@ function classStreamCopyPost($container, array $post, $gibbonCourseClassIDTarget
         'title'                   => $post['title'],
         'body'                    => $post['body'],
         'pinned'                  => $post['pinned'],
+        'parentsCanView'          => $post['parentsCanView'],
         'classStreamPostIDSource' => $post['classStreamPostID'],
         'timestamp'               => $post['timestamp'],
         'timestampModified'       => $post['timestampModified'],
@@ -368,6 +370,90 @@ function classStreamDecorateCard(array $class, array $newCounts): array
     $class['teachers'] = implode(', ', $names);
 
     return $class;
+}
+
+/**
+ * Combine a required due date with an optional time into the datetime gibbonPlannerEntry expects,
+ * the same rule core's own Planner add form uses: no time given defaults to 21:00.
+ */
+function classStreamHomeworkDueDateTime($date, $time): ?string
+{
+    $date = Format::dateConvert($date);
+    if (empty($date) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) return null;
+
+    $time = trim((string) $time);
+    if (!preg_match('/^\d{1,2}:\d{2}/', $time)) $time = '21:00';
+
+    return $date.' '.substr($time, 0, 5).':00';
+}
+
+/**
+ * A "Homework" stream post never becomes a classStreamPost: it writes straight into core's
+ * gibbonPlannerEntry, so the stream shows it through the same homework card a Planner-made lesson
+ * already gets (PlannerItemGateway), never a duplicate. Finds the class's most recent timetabled
+ * lesson up to today and reuses its Planner entry if one exists there already, touching only the
+ * homework fields (never its name, description, teacher's notes or outcomes); otherwise creates a
+ * new entry dated to that lesson, or to today if the class has no resolvable timetable slot.
+ * Returns the gibbonPlannerEntryID used, or null if the write failed.
+ */
+function classStreamSaveHomework($container, $gibbonPersonID, array $class, array $homework): ?string
+{
+    $postGateway = $container->get(PostGateway::class);
+    $entryGateway = $container->get(PlannerEntryGateway::class);
+
+    $slot = $postGateway->selectMostRecentLessonSlot($class['gibbonCourseClassID'], $class['gibbonSchoolYearID']);
+    $date = $slot['date'] ?? date('Y-m-d');
+    $timeStart = $slot['timeStart'] ?? null;
+    $timeEnd = $slot['timeEnd'] ?? null;
+
+    $match = ['gibbonCourseClassID' => $class['gibbonCourseClassID'], 'date' => $date];
+    if (!empty($timeStart)) {
+        $match['timeStart'] = $timeStart;
+    }
+    $existing = $entryGateway->selectBy($match)->fetch();
+
+    $homeworkData = [
+        'homework'                                => 'Y',
+        'homeworkDueDateTime'                     => $homework['homeworkDueDateTime'],
+        'homeworkDetails'                          => $homework['homeworkDetails'],
+        'homeworkTimeCap'                          => $homework['homeworkTimeCap'],
+        'homeworkLocation'                         => 'Out of Class',
+        'homeworkSubmission'                       => $homework['homeworkSubmission'],
+        'homeworkSubmissionDateOpen'                => $homework['homeworkSubmissionDateOpen'],
+        'homeworkSubmissionType'                    => $homework['homeworkSubmissionType'],
+        'homeworkSubmissionRequired'                => $homework['homeworkSubmissionRequired'],
+        'homeworkSubmissionDrafts'                  => null,
+        'homeworkCrowdAssess'                       => 'N',
+        'homeworkCrowdAssessOtherTeachersRead'      => 'N',
+        'homeworkCrowdAssessClassmatesRead'         => 'N',
+        'homeworkCrowdAssessOtherStudentsRead'      => 'N',
+        'homeworkCrowdAssessSubmitterParentsRead'   => 'N',
+        'homeworkCrowdAssessClassmatesParentsRead'  => 'N',
+        'homeworkCrowdAssessOtherParentsRead'       => 'N',
+        'gibbonPersonIDLastEdit'                    => $gibbonPersonID,
+    ];
+
+    if (!empty($existing)) {
+        return $entryGateway->update($existing['gibbonPlannerEntryID'], $homeworkData) ? $existing['gibbonPlannerEntryID'] : null;
+    }
+
+    $newEntry = [
+        'gibbonCourseClassID'   => $class['gibbonCourseClassID'],
+        'date'                  => $date,
+        'timeStart'             => $timeStart,
+        'timeEnd'               => $timeEnd,
+        'name'                  => mb_substr($class['course'].'.'.$class['class'], 0, 50),
+        'summary'               => '',
+        'description'           => '',
+        'teachersNotes'         => '',
+        'viewableStudents'      => 'Y',
+        'viewableParents'       => 'Y',
+        'gibbonPersonIDCreator' => $gibbonPersonID,
+    ] + $homeworkData;
+
+    $gibbonPlannerEntryID = $entryGateway->insert($newEntry);
+
+    return !empty($gibbonPlannerEntryID) ? $gibbonPlannerEntryID : null;
 }
 
 /**

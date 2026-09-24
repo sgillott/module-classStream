@@ -25,7 +25,7 @@ $description = 'A Google Classroom-style stream for every class: announcements w
 $entryURL    = 'stream.php';
 $type        = 'Additional';
 $category    = 'Learn';
-$version     = '0.9.00';
+$version     = '0.10.00';
 $author      = 'Steve Gillott';
 $url         = '';
 
@@ -39,6 +39,8 @@ $url         = '';
 // where a synced or reused post was copied from. timestampPublished is when the post is (or will
 // be) on the stream: NULL is a draft, a future time is scheduled. notified flips to Y once the
 // class has been told about it, which happens on the first stream view after it is due.
+// parentsCanView NULL means "visible", same as Y: only an explicit N hides a post from parents, so
+// every post made before this column existed stays visible without a backfill.
 $moduleTables[] = "CREATE TABLE `classStreamPost` (
     `classStreamPostID` int(12) UNSIGNED ZEROFILL NOT NULL AUTO_INCREMENT,
     `gibbonCourseClassID` int(8) UNSIGNED ZEROFILL NOT NULL,
@@ -48,6 +50,7 @@ $moduleTables[] = "CREATE TABLE `classStreamPost` (
     `title` varchar(120) DEFAULT NULL,
     `body` text,
     `pinned` enum('N','Y') NOT NULL DEFAULT 'N',
+    `parentsCanView` enum('Y','N') DEFAULT NULL,
     `classStreamPostIDSource` int(12) UNSIGNED ZEROFILL DEFAULT NULL,
     `timestamp` timestamp NULL DEFAULT NULL,
     `timestampModified` timestamp NULL DEFAULT NULL,

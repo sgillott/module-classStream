@@ -134,6 +134,14 @@ class StreamRenderer implements ContainerAwareInterface
         // Staff see where a mirrored or synced copy came from; students just see the post.
         $mirrorSources = $access['isStaff'] ? $this->linkGateway->selectSourcesByClass($gibbonCourseClassID)->fetchKeyPair() : [];
 
+        if ($isParent) {
+            // parentsCanView is NULL on every post made before the column existed, which counts
+            // as visible: only an explicit N hides a post from parents.
+            $posts = array_values(array_filter($posts, function ($post) {
+                return $post['parentsCanView'] != 'N';
+            }));
+        }
+
         if ($isParent && $parentView == 'None') {
             // None: only what teachers post.
             $posts = array_values(array_filter($posts, function ($post) use ($isStudentAuthor) {

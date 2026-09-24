@@ -140,3 +140,13 @@ $sql[$count][1] = "ALTER TABLE classStreamClass
 ;end
 -- Assessment rows are read live from markbook columns. Existing classes receive the enabled
 -- default; a NULL assessmentTypes value means all types currently used in that class.";
+
+// v0.10.00
+$count++;
+$sql[$count][0] = "0.10.00";
+$sql[$count][1] = "ALTER TABLE classStreamPost ADD COLUMN parentsCanView enum('Y','N') DEFAULT NULL AFTER pinned
+;end
+-- Parents-can-view toggle on Announcement/Material posts (NULL on every existing post means
+-- visible, same as Y; only an explicit N hides one). A third post type, Homework, adds no column
+-- here: it writes straight to core's gibbonPlannerEntry instead of classStreamPost, reusing the
+-- homework card the Planner rows already render on the stream.";

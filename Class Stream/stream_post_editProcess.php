@@ -74,6 +74,7 @@ if (!($publish == 'now' && $wasLive)) {
 if ($access['canManage']) {
     $data['pinned'] = ($_POST['pinned'] ?? '') == 'Y' ? 'Y' : 'N';
 }
+$data['parentsCanView'] = ($_POST['parentsCanView'] ?? '') == 'Y' ? 'Y' : 'N';
 
 if (!$postGateway->update($classStreamPostID, $data)) {
     header("Location: {$URLBack}&return=error2");

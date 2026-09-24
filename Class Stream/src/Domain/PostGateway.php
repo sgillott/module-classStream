@@ -251,6 +251,31 @@ class PostGateway extends QueryableGateway
     }
 
     /**
+     * The most recent timetabled occurrence of a class up to and including today: its date and
+     * period times, or an empty row if the class has no timetable entries at all. Used to find
+     * which lesson a "homework" stream post belongs to, the same slot gibbonPlannerEntry rows for
+     * this class are keyed on.
+     */
+    public function selectMostRecentLessonSlot($gibbonCourseClassID, $gibbonSchoolYearID)
+    {
+        $data = ['gibbonCourseClassID' => $gibbonCourseClassID, 'gibbonSchoolYearID' => $gibbonSchoolYearID, 'today' => date('Y-m-d')];
+        $sql = "SELECT gibbonTTDayDate.date, gibbonTTColumnRow.timeStart, gibbonTTColumnRow.timeEnd
+                FROM gibbonTTDayRowClass
+                JOIN gibbonTTDay ON (gibbonTTDay.gibbonTTDayID=gibbonTTDayRowClass.gibbonTTDayID)
+                JOIN gibbonTT ON (gibbonTT.gibbonTTID=gibbonTTDay.gibbonTTID)
+                JOIN gibbonTTDayDate ON (gibbonTTDayDate.gibbonTTDayID=gibbonTTDay.gibbonTTDayID)
+                JOIN gibbonTTColumnRow ON (gibbonTTColumnRow.gibbonTTColumnRowID=gibbonTTDayRowClass.gibbonTTColumnRowID)
+                WHERE gibbonTTDayRowClass.gibbonCourseClassID=:gibbonCourseClassID
+                AND gibbonTT.active='Y'
+                AND gibbonTT.gibbonSchoolYearID=:gibbonSchoolYearID
+                AND gibbonTTDayDate.date<=:today
+                ORDER BY gibbonTTDayDate.date DESC, gibbonTTColumnRow.timeStart DESC
+                LIMIT 1";
+
+        return $this->db()->selectOne($sql, $data);
+    }
+
+    /**
      * The current students of a class, one row each, straight from the class membership. No join
      * to gibbonStudentEnrolment: core's CourseClassPersonGateway::selectStudentsByClass() joins it
      * without a year filter and returns a student once per year they were ever enrolled.

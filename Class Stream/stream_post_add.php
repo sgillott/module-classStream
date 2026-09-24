@@ -48,36 +48,49 @@ $form->setTitle(__m('Announce something to {class}', ['class' => $className]));
 $form->addHiddenValue('address', $session->get('address'));
 $form->addHiddenValue('gibbonCourseClassID', $gibbonCourseClassID);
 
+$typeOptions = ['Announcement' => __m('Announcement'), 'Material' => __m('Material')];
+if ($access['canManage']) {
+    $typeOptions['Homework'] = __m('Homework');
+}
+
 $row = $form->addRow();
-    $row->addLabel('type', __m('Type'))->description(__m('Material is for resources students come back to: it carries a title.'));
-    $row->addSelect('type')->fromArray(['Announcement' => __m('Announcement'), 'Material' => __m('Material')])->selected('Announcement')->required();
+    $row->addLabel('type', __m('Type'))->description(__m('Material is for resources students come back to: it carries a title. Homework adds straight to the Planner, on the class\'s most recent lesson.'));
+    $row->addSelect('type')->fromArray($typeOptions)->selected('Announcement')->required();
 
 $form->toggleVisibilityByClass('materialTitle')->onSelect('type')->when('Material');
 $row = $form->addRow()->addClass('materialTitle');
     $row->addLabel('title', __m('Title'));
     $row->addTextField('title')->maxLength(120);
 
-$col = $form->addRow()->addColumn();
+// Announcement and Material share the same post fields. Homework hides all of these: it writes to
+// the Planner instead, never to a stream post.
+$form->toggleVisibilityByClass('postOnlyFields')->onSelect('type')->when(['Announcement', 'Material']);
+
+$col = $form->addRow()->addClass('postOnlyFields')->addColumn();
     $col->addLabel('body', __m('Post'));
     $col->addEditor('body', $guid)->setRows(10)->required();
 
-$col = $form->addRow()->addColumn();
+$col = $form->addRow()->addClass('postOnlyFields')->addColumn();
     $col->addLabel('links', __m('Links'))->description(__m('One web address per line, starting with http:// or https://'));
     $col->addTextArea('links')->setRows(3);
 
-$row = $form->addRow();
+$row = $form->addRow()->addClass('postOnlyFields');
     $row->addLabel('attachments', __m('Files'));
     $row->addFileUpload('attachments')->uploadMultiple(true);
 
 if ($access['canManage']) {
-    $row = $form->addRow();
+    $row = $form->addRow()->addClass('postOnlyFields');
         $row->addLabel('pinned', __m('Pin to top'))->description(__m('Pinned posts stay above everything else on the stream.'));
         $row->addCheckbox('pinned')->setValue('Y');
 }
 
+$row = $form->addRow()->addClass('postOnlyFields');
+    $row->addLabel('parentsCanView', __m('Parents can view'))->description(__m('Turn off to keep this post out of parents\' view of the stream.'));
+    $row->addCheckbox('parentsCanView')->setValue('Y')->checked(true);
+
 // When it goes on the stream: now, a draft to finish later, or a chosen date and time. A
 // scheduled post is announced to the class on the first stream view after its time.
-$row = $form->addRow();
+$row = $form->addRow()->addClass('postOnlyFields');
     $row->addLabel('publish', __m('Publish'));
     $row->addSelect('publish')->fromArray(['now' => __m('Now'), 'draft' => __m('Save as draft'), 'schedule' => __m('Schedule for a date and time')])->selected('now')->required();
 
@@ -87,6 +100,39 @@ $row = $form->addRow()->addClass('publishSchedule');
     $col = $row->addColumn('publishDate');
     $col->addDate('publishDate')->addClass('mr-2')->setValue('');
     $col->addTime('publishTime')->setValue('');
+
+// Homework: found on the class's most recent lesson (a Planner entry there is reused if one
+// exists, or created), never on a stream post. Mirrors core's own Planner homework fields.
+if ($access['canManage']) {
+    $form->toggleVisibilityByClass('homeworkFields')->onSelect('type')->when('Homework');
+
+    $row = $form->addRow()->addClass('homeworkFields');
+        $row->addLabel('homeworkDueDate', __m('Due Date'))->description(__m('Date is required, time is optional.'));
+        $col = $row->addColumn('homeworkDueDate');
+        $col->addDate('homeworkDueDate')->addClass('mr-2')->setValue('')->required();
+        $col->addTime('homeworkDueDateTime')->setValue('');
+
+    $row = $form->addRow()->addClass('homeworkFields');
+        $row->addLabel('homeworkTimeCap', __m('Time Cap?'))->description(__m('The maximum time, in minutes, for students to work on this.'));
+        $row->addNumber('homeworkTimeCap');
+
+    $col = $form->addRow()->addClass('homeworkFields')->addColumn();
+        $col->addLabel('homeworkDetails', __m('Homework Details'));
+        $col->addEditor('homeworkDetails', $guid)->setRows(10)->required();
+
+    $form->toggleVisibilityByClass('homeworkSubmissionFields')->onSelect('homeworkSubmission')->when('Y');
+    $row = $form->addRow()->addClass('homeworkFields');
+        $row->addLabel('homeworkSubmission', __m('Online Submission?'));
+        $row->addYesNo('homeworkSubmission')->checked('N');
+
+    $row = $form->addRow()->addClass('homeworkSubmissionFields');
+        $row->addLabel('homeworkSubmissionType', __m('Submission Type'));
+        $row->addSelect('homeworkSubmissionType')->fromArray(['Link' => __('Link'), 'File' => __('File'), 'Link/File' => __('Link/File')])->selected('Link/File');
+
+    $row = $form->addRow()->addClass('homeworkSubmissionFields');
+        $row->addLabel('homeworkSubmissionRequired', __m('Submission Required'));
+        $row->addSelect('homeworkSubmissionRequired')->fromArray(['Optional' => __('Optional'), 'Required' => __('Required')])->selected('Required');
+}
 
 $row = $form->addRow();
     $row->addFooter();

@@ -105,6 +105,10 @@ if ($access['canManage']) {
         $row->addCheckbox('pinned')->setValue('Y')->checked($post['pinned']);
 }
 
+$row = $form->addRow();
+    $row->addLabel('parentsCanView', __m('Parents can view'))->description(__m('Turn off to keep this post out of parents\' view of the stream.'));
+    $row->addCheckbox('parentsCanView')->setValue('Y')->checked($post['parentsCanView'] != 'N');
+
 // A published post stays published unless the teacher changes it here; a scheduled one shows its time.
 $isDraft = empty($post['timestampPublished']);
 $isScheduled = !$isDraft && $post['timestampPublished'] > date('Y-m-d H:i:s');
