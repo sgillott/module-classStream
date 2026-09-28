@@ -7,8 +7,9 @@ use Gibbon\Domain\QueryableGateway;
 /**
  * Link Gateway
  *
- * One-way links between classes. A post made in the source class is copied into each target
- * class. "Mirror" on the Customise page is one row (A -> B); "Sync" is two (A -> B and B -> A).
+ * One-way links between classes. An eligible staff post made in the source class is copied into
+ * each target class. "Mirror" on the Customise page is one row (A -> B); "Sync" is two
+ * (A -> B and B -> A).
  *
  * @version v0.4.00
  * @since   v0.4.00

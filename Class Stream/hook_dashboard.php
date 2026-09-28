@@ -75,10 +75,7 @@ $postGateway = $container->get(PostGateway::class);
 $streamAccess = $container->get(StreamAccess::class);
 $moduleURL = $session->get('absoluteURL').'/index.php?q=/modules/Class Stream';
 
-$newCounts = $container->get(ViewGateway::class)->selectNewCountsByPerson($gibbonPersonID)->fetchKeyPair();
-$decorate = function (array $class) use ($newCounts) {
-    return classStreamDecorateCard($class, $newCounts);
-};
+$viewGateway = $container->get(ViewGateway::class);
 
 // PARENTS: the cards of the child whose dashboard this is. If the dashboard passed no child (it
 // always does, but stay safe), fall back to every child with a heading each.
@@ -86,21 +83,28 @@ if ($scope == 'parent') {
     $children = $streamAccess->childrenOfCurrentParent();
     $shown = isset($children[intval($hookChildID)]) ? [$children[intval($hookChildID)]] : $children;
     $withHeadings = count($shown) != 1 || !isset($children[intval($hookChildID)]);
+    $parentView = $streamAccess->getParentView();
 
     $output = '';
     foreach ($shown as $child) {
-        $classes = $postGateway->selectClassesByPerson($gibbonSchoolYearID, $child['gibbonPersonID'])->fetchAll();
+        $classes = $postGateway->selectClassesByPerson($gibbonSchoolYearID, $child['gibbonPersonID'], $parentView)->fetchAll();
+        $newCounts = $viewGateway->selectNewCountsByPerson($gibbonPersonID, $child['gibbonPersonID'], $parentView)->fetchKeyPair();
         if ($withHeadings) {
             $output .= '<h4 class="mt-2 mb-2">'.Gibbon\Services\Format::name('', $child['preferredName'], $child['surname'], 'Student', false, true).'</h4>';
         }
         $output .= $page->fetchFromTemplate('streamCards.twig.html', [
             'compact'               => true,
-            'classes'               => array_map($decorate, $classes),
+            'classes'               => array_map(function ($class) use ($newCounts) { return classStreamDecorateCard($class, $newCounts); }, $classes),
             'gibbonPersonIDStudent' => $child['gibbonPersonID'],
         ]);
     }
     return '<div class="cs-dashboard">'.$cssGuard.$output.'</div>';
 }
+
+$newCounts = $viewGateway->selectNewCountsByPerson($gibbonPersonID)->fetchKeyPair();
+$decorate = function (array $class) use ($newCounts) {
+    return classStreamDecorateCard($class, $newCounts);
+};
 
 // STAFF AND STUDENTS: what is on the timetable now?
 $today = date('Y-m-d');

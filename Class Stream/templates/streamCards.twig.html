@@ -32,7 +32,7 @@ dashboard tab (compact = true).
 
 {% if classes is empty %}
     <div class="h-48 rounded-sm border bg-gray-100 shadow-inner overflow-hidden">
-        {{ include('components/blankSlate.twig.html', {'blankSlate': __m('You are not a member of any class this year.')}) }}
+        {{ include('components/blankSlate.twig.html', {'blankSlate': __m('No class streams are available.')}) }}
     </div>
 {% endif %}
 

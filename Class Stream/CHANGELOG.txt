@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+v0.11.00
+--------
+Teachers can hide an entire class stream from parents in Class Settings, without affecting staff or student access.
+Planner display choices now make clear that homework details are always shown; when lesson rows are disabled, the redundant detail choice is replaced by a simple show or hide control.
+Students publish posts immediately and can no longer create drafts, schedule posts, or control parent visibility; these remain class-manager controls.
+Parent class-card counts, latest activity and new-post badges now follow the same Parent View and per-post visibility rules as the stream.
+Comment submissions now use the stream's visibility rules, preventing comments on drafts, future posts, hidden Planner items and disabled assessments.
+Parent visibility now recognises student authors from the originating class of synced posts, including stream cards and new-post badges.
+Class Settings now lists assessment types configured in that class's Markbook Weightings as well as types already used by its assessments, rather than every type used across the school.
+Linked classes now sync staff posts only; student posts remain in the class where they were created.
+
 v0.9.00
 -------
 Markbook assessments can appear live on each class stream, filtered by the class teacher's selected assessment types.

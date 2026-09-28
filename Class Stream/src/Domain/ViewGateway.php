@@ -66,19 +66,50 @@ class ViewGateway extends QueryableGateway
     /**
      * gibbonCourseClassID => number of posts by other people since the person's last visit, for
      * every class they have a row for. A class never opened is absent: the caller treats that as
-     * "all posts are new".
+     * "all posts are new". Parent callers supply the child and Parent View mode so hidden activity
+     * never contributes to the badge.
      */
-    public function selectNewCountsByPerson($gibbonPersonID)
+    public function selectNewCountsByPerson($gibbonPersonID, $gibbonPersonIDStudent = null, $parentView = null)
     {
         $data = ['gibbonPersonID' => $gibbonPersonID, 'now' => date('Y-m-d H:i:s')];
+        $parentView = !empty($gibbonPersonIDStudent) && in_array($parentView, ['Own child', 'All redacted', 'None'], true) ? $parentView : null;
+        $parentPostJoin = '';
+        $parentPostFilter = '';
+
+        if ($parentView !== null) {
+            $data['gibbonPersonIDStudent'] = $gibbonPersonIDStudent;
+            $data['today'] = date('Y-m-d');
+            $parentPostJoin = " LEFT JOIN classStreamPost AS newSource ON (newSource.classStreamPostID=newPost.classStreamPostIDSource)";
+            $studentAuthor = "EXISTS (SELECT 1 FROM gibbonCourseClassPerson AS studentRole
+                JOIN gibbonPerson AS studentAuthor ON (studentAuthor.gibbonPersonID=studentRole.gibbonPersonID)
+                WHERE studentRole.gibbonCourseClassID=COALESCE(newSource.gibbonCourseClassID, newPost.gibbonCourseClassID)
+                AND studentRole.gibbonPersonID=newPost.gibbonPersonID
+                AND studentRole.role='Student'
+                AND studentAuthor.status='Full'
+                AND (studentAuthor.dateStart IS NULL OR studentAuthor.dateStart<=:today)
+                AND (studentAuthor.dateEnd IS NULL OR studentAuthor.dateEnd>=:today))";
+
+            $parentPostFilter = " AND (newPost.parentsCanView IS NULL OR newPost.parentsCanView<>'N')";
+            if ($parentView == 'Own child') {
+                $parentPostFilter .= " AND (newPost.gibbonPersonID=:gibbonPersonIDStudent OR NOT ".$studentAuthor.")";
+            } elseif ($parentView == 'None') {
+                $parentPostFilter .= " AND NOT ".$studentAuthor;
+            }
+        }
+
         $sql = "SELECT classStreamView.gibbonCourseClassID AS groupBy,
-                    (SELECT COUNT(*) FROM classStreamPost
-                        WHERE classStreamPost.gibbonCourseClassID=classStreamView.gibbonCourseClassID
-                        AND classStreamPost.timestampPublished>classStreamView.timestamp
-                        AND classStreamPost.timestampPublished<=:now
-                        AND classStreamPost.gibbonPersonID<>classStreamView.gibbonPersonID) AS newCount
+                    (SELECT COUNT(*) FROM classStreamPost AS newPost".$parentPostJoin."
+                        WHERE newPost.gibbonCourseClassID=classStreamView.gibbonCourseClassID
+                        AND newPost.timestampPublished>classStreamView.timestamp
+                        AND newPost.timestampPublished<=:now
+                        AND newPost.gibbonPersonID<>classStreamView.gibbonPersonID".$parentPostFilter.") AS newCount
                 FROM classStreamView
+                ".($parentView !== null ? "LEFT JOIN classStreamClass ON (classStreamClass.gibbonCourseClassID=classStreamView.gibbonCourseClassID)" : '')."
                 WHERE classStreamView.gibbonPersonID=:gibbonPersonID";
+
+        if ($parentView !== null) {
+            $sql .= " AND (classStreamClass.visibleToParents IS NULL OR classStreamClass.visibleToParents='Y')";
+        }
 
         return $this->db()->select($sql, $data);
     }

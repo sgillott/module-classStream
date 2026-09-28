@@ -100,6 +100,7 @@ if (trim(strip_tags($body, '<img><iframe>')) == '' || ($type == 'Material' && $t
 }
 
 $postGateway = $container->get(PostGateway::class);
+$now = date('Y-m-d H:i:s');
 
 $data = [
     'gibbonCourseClassID' => $gibbonCourseClassID,
@@ -109,10 +110,10 @@ $data = [
     'title'               => $title,
     'body'                => $body,
     'pinned'              => ($access['canManage'] && ($_POST['pinned'] ?? '') == 'Y') ? 'Y' : 'N',
-    'parentsCanView'      => ($_POST['parentsCanView'] ?? '') == 'Y' ? 'Y' : 'N',
-    'timestamp'           => date('Y-m-d H:i:s'),
-    'timestampModified'   => date('Y-m-d H:i:s'),
-    'timestampPublished'  => classStreamPublishTime($_POST['publish'] ?? 'now', $_POST['publishDate'] ?? '', $_POST['publishTime'] ?? ''),
+    'parentsCanView'      => $access['canManage'] ? (($_POST['parentsCanView'] ?? '') == 'Y' ? 'Y' : 'N') : 'Y',
+    'timestamp'           => $now,
+    'timestampModified'   => $now,
+    'timestampPublished'  => $access['canManage'] ? classStreamPublishTime($_POST['publish'] ?? 'now', $_POST['publishDate'] ?? '', $_POST['publishTime'] ?? '') : $now,
     'notified'            => 'N',
 ];
 $classStreamPostID = $postGateway->insert($data);

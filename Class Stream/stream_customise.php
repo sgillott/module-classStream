@@ -22,6 +22,7 @@ use Gibbon\Domain\System\SettingGateway;
 use Gibbon\Module\ClassStream\Theme;
 use Gibbon\Module\ClassStream\StreamAccess;
 use Gibbon\Module\ClassStream\Domain\LinkGateway;
+use Gibbon\Module\ClassStream\Domain\AssessmentItemGateway;
 
 require_once __DIR__.'/moduleFunctions.php';
 
@@ -92,16 +93,25 @@ $row = $form->addRow();
         ->fromArray(['' => __m('School default ({default})', ['default' => $accessLabels[$defaultAccess] ?? $defaultAccess])] + $accessLabels)
         ->selected($settings['studentAccessStored']);
 
-$plannerOptions = [
-    'Condensed' => __m('Show condensed notifications'),
-    'Details'   => __m('Show details'),
-    'Hidden'    => __m('Hide'),
-];
 $row = $form->addRow();
-$row->addLabel('plannerDisplay', __m('Planner on the stream'))->description($showLessons ? __m('How homework and lessons from the Planner appear on this stream.') : __m('How homework from the Planner appears on this stream.'));
-    $row->addSelect('plannerDisplay')->fromArray($plannerOptions)->selected($settings['plannerDisplay'])->required();
+    $row->addLabel('visibleToParents', __m('Visible to Parents'))->description(__m('Allow parents of students in this class to open and view its stream.'));
+    $row->addYesNo('visibleToParents')->selected($settings['visibleToParents'])->required();
 
-$assessmentTypes = $pdo->select("SELECT DISTINCT type FROM gibbonMarkbookColumn WHERE type IS NOT NULL AND type<>'' ORDER BY type")->fetchAll(\PDO::FETCH_COLUMN);
+$row = $form->addRow();
+if ($showLessons) {
+    $plannerOptions = [
+        'Condensed' => __m('Show homework details and lesson summaries'),
+        'Details'   => __m('Show homework and lesson details'),
+        'Hidden'    => __m('Hide Planner items'),
+    ];
+    $row->addLabel('plannerDisplay', __m('Planner on the stream'))->description(__m('Choose how homework and lessons from the Planner appear on this stream.'));
+    $row->addSelect('plannerDisplay')->fromArray($plannerOptions)->selected($settings['plannerDisplay'])->required();
+} else {
+    $row->addLabel('plannerVisible', __m('Planner on the stream'))->description(__m('Show full homework details from the Planner, including the Upcoming panel.'));
+    $row->addYesNo('plannerVisible')->selected($settings['plannerDisplay'] == 'Hidden' ? 'N' : 'Y')->required();
+}
+
+$assessmentTypes = $container->get(AssessmentItemGateway::class)->selectAssessmentTypesByClass($gibbonCourseClassID)->fetchAll(\PDO::FETCH_COLUMN);
 $assessmentTypeOptions = array_combine($assessmentTypes, $assessmentTypes) ?: [];
 $selectedAssessmentTypes = $settings['assessmentTypes'] ?? $assessmentTypes;
 $selectedAssessmentTypes = array_values(array_filter($selectedAssessmentTypes, function ($type) use ($assessmentTypes) {
@@ -124,9 +134,9 @@ $row = $form->addRow();
 $form->toggleVisibilityByClass('classStreamAssessmentTypes')->onClick('showAssessments')->when('Y');
 
 // LINKED CLASSES
-// 1-way sync: posts made here are copied to the chosen classes. 2-way sync: posts made in either
-// class appear in both. Only classes the person could post in are offered, so nobody can push
-// posts into a class they do not teach.
+// 1-way sync: staff posts made here are copied to the chosen classes. 2-way sync: staff posts made
+// in either class appear in both. Only classes the person could post in are offered, so nobody can
+// push posts into a class they do not teach.
 $linkGateway = $container->get(LinkGateway::class);
 $targets = array_keys($linkGateway->selectTargetsByClass($gibbonCourseClassID)->fetchKeyPair());
 $sources = array_keys($linkGateway->selectSourcesByClass($gibbonCourseClassID)->fetchKeyPair());
@@ -143,11 +153,11 @@ if (empty($linkable)) {
     $form->addRow()->addContent('<p class="text-xs text-gray-600">'.__m('You have no other class to link this one to.').'</p>');
 } else {
     $row = $form->addRow();
-        $row->addLabel('mirror', __m('1-way Sync (push) to'))->description(__m('Announcements and materials posted here are also posted in these classes. Not the other way round, and never the comments.'));
+        $row->addLabel('mirror', __m('1-way Sync (push) to'))->description(__m('Announcements and materials posted by staff here are also posted in these classes. Student posts and comments stay in their original class.'));
         $row->addSelect('mirror')->fromArray($linkable)->selectMultiple()->selected($mirrored)->setSize(6);
 
     $row = $form->addRow();
-        $row->addLabel('sync', __m('2-way Sync (push & pull) with'))->description(__m('Announcements and materials posted in any of these classes, or here, appear in all of them. Comments stay where they were made.'));
+        $row->addLabel('sync', __m('2-way Sync (push & pull) with'))->description(__m('Announcements and materials posted by staff in any linked class appear in all of them. Student posts and comments stay in their original class.'));
         $row->addSelect('sync')->fromArray($linkable)->selectMultiple()->selected($synced)->setSize(6);
 }
 

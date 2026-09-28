@@ -82,24 +82,24 @@ if ($access['canManage']) {
     $row = $form->addRow()->addClass('postOnlyFields');
         $row->addLabel('pinned', __m('Pin to top'))->description(__m('Pinned posts stay above everything else on the stream.'));
         $row->addYesNo('pinned')->checked('N');
+
+    $row = $form->addRow()->addClass('postOnlyFields');
+        $row->addLabel('parentsCanView', __m('Parents can view'))->description(__m('Switch off to keep this post out of parents\' view of the stream.'));
+        $row->addYesNo('parentsCanView')->checked('Y');
+
+    // Only class managers can hold a post back as a draft or schedule it for later. Student posts
+    // are published immediately and remain visible to parents.
+    $row = $form->addRow()->addClass('postOnlyFields');
+        $row->addLabel('publish', __m('Publish'));
+        $row->addSelect('publish')->fromArray(['now' => __m('Now'), 'draft' => __m('Save as draft'), 'schedule' => __m('Schedule for a date and time')])->selected('now')->required();
+
+    $form->toggleVisibilityByClass('publishSchedule')->onSelect('publish')->when('schedule');
+    $row = $form->addRow()->addClass('publishSchedule');
+        $row->addLabel('publishDate', __m('Publish on'));
+        $col = $row->addColumn('publishDate');
+        $col->addDate('publishDate')->addClass('mr-2')->setValue('');
+        $col->addTime('publishTime')->setValue('');
 }
-
-$row = $form->addRow()->addClass('postOnlyFields');
-    $row->addLabel('parentsCanView', __m('Parents can view'))->description(__m('Switch off to keep this post out of parents\' view of the stream.'));
-    $row->addYesNo('parentsCanView')->checked('Y');
-
-// When it goes on the stream: now, a draft to finish later, or a chosen date and time. A
-// scheduled post is announced to the class on the first stream view after its time.
-$row = $form->addRow()->addClass('postOnlyFields');
-    $row->addLabel('publish', __m('Publish'));
-    $row->addSelect('publish')->fromArray(['now' => __m('Now'), 'draft' => __m('Save as draft'), 'schedule' => __m('Schedule for a date and time')])->selected('now')->required();
-
-$form->toggleVisibilityByClass('publishSchedule')->onSelect('publish')->when('schedule');
-$row = $form->addRow()->addClass('publishSchedule');
-    $row->addLabel('publishDate', __m('Publish on'));
-    $col = $row->addColumn('publishDate');
-    $col->addDate('publishDate')->addClass('mr-2')->setValue('');
-    $col->addTime('publishTime')->setValue('');
 
 // Homework: found on the class's most recent lesson (a Planner entry there is reused if one
 // exists, or created), never on a stream post. Mirrors core's own Planner homework fields.

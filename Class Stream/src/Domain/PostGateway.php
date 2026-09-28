@@ -23,14 +23,24 @@ class PostGateway extends QueryableGateway
     /**
      * Every published post of one class (drafts and posts scheduled for later are left out), pinned
      * first then newest first, with the author joined and the comment count from gibbonDiscussion.
-     * Not paginated here: the stream page merges these with the Planner's virtual rows into one
-     * timeline and pages that in PHP.
+     * studentAuthored is resolved against the source class for synced posts, so the parent lens
+     * cannot mistake a student from another linked class for a staff author. Not paginated here:
+     * the stream page merges these with the Planner's virtual rows into one timeline and pages that
+     * in PHP.
      */
     public function selectPostsByClass($gibbonCourseClassID, $gibbonModuleID)
     {
-        $data = ['gibbonCourseClassID' => $gibbonCourseClassID, 'gibbonModuleID' => $gibbonModuleID, 'now' => date('Y-m-d H:i:s')];
+        $data = ['gibbonCourseClassID' => $gibbonCourseClassID, 'gibbonModuleID' => $gibbonModuleID, 'now' => date('Y-m-d H:i:s'), 'today' => date('Y-m-d')];
         $sql = "SELECT classStreamPost.*, gibbonPerson.preferredName, gibbonPerson.surname, gibbonPerson.image_240,
                     source.gibbonCourseClassID AS sourceClassID,
+                    EXISTS (SELECT 1 FROM gibbonCourseClassPerson AS authorRole
+                        JOIN gibbonPerson AS studentAuthor ON (studentAuthor.gibbonPersonID=authorRole.gibbonPersonID)
+                        WHERE authorRole.gibbonCourseClassID=COALESCE(source.gibbonCourseClassID, classStreamPost.gibbonCourseClassID)
+                        AND authorRole.gibbonPersonID=classStreamPost.gibbonPersonID
+                        AND authorRole.role='Student'
+                        AND studentAuthor.status='Full'
+                        AND (studentAuthor.dateStart IS NULL OR studentAuthor.dateStart<=:today)
+                        AND (studentAuthor.dateEnd IS NULL OR studentAuthor.dateEnd>=:today)) AS studentAuthored,
                     (SELECT COUNT(*) FROM gibbonDiscussion WHERE gibbonDiscussion.foreignTable='classStreamPost' AND gibbonDiscussion.gibbonModuleID=:gibbonModuleID AND gibbonDiscussion.foreignTableID=classStreamPost.classStreamPostID) AS commentCount
                 FROM classStreamPost
                 JOIN gibbonPerson ON (gibbonPerson.gibbonPersonID=classStreamPost.gibbonPersonID)
@@ -146,20 +156,54 @@ class PostGateway extends QueryableGateway
     }
 
     /**
+     * Is a post currently present on its stream rather than a draft or future scheduled post?
+     */
+    public static function isVisibleOnStream(array $post): bool
+    {
+        return !empty($post['timestampPublished']) && $post['timestampPublished'] <= date('Y-m-d H:i:s');
+    }
+
+    /**
      * The classes a person belongs to in a school year (any live role), with the class colour,
      * the teachers' names, the post count and the newest post time, for the My Streams cards.
+     * Supplying a Parent View mode omits hidden classes and applies that child's parent lens to
+     * the post count and latest-post time shown on each card.
      */
-    public function selectClassesByPerson($gibbonSchoolYearID, $gibbonPersonID)
+    public function selectClassesByPerson($gibbonSchoolYearID, $gibbonPersonID, $parentView = null)
     {
         $data = ['gibbonSchoolYearID' => $gibbonSchoolYearID, 'gibbonPersonID' => $gibbonPersonID, 'now' => date('Y-m-d H:i:s')];
+        $parentView = in_array($parentView, ['Own child', 'All redacted', 'None'], true) ? $parentView : null;
+        $parentPostJoin = '';
+        $parentPostFilter = '';
+
+        if ($parentView !== null) {
+            $data['today'] = date('Y-m-d');
+            $parentPostJoin = " LEFT JOIN classStreamPost AS cardSource ON (cardSource.classStreamPostID=cardPost.classStreamPostIDSource)";
+            $studentAuthor = "EXISTS (SELECT 1 FROM gibbonCourseClassPerson AS studentRole
+                JOIN gibbonPerson AS studentAuthor ON (studentAuthor.gibbonPersonID=studentRole.gibbonPersonID)
+                WHERE studentRole.gibbonCourseClassID=COALESCE(cardSource.gibbonCourseClassID, cardPost.gibbonCourseClassID)
+                AND studentRole.gibbonPersonID=cardPost.gibbonPersonID
+                AND studentRole.role='Student'
+                AND studentAuthor.status='Full'
+                AND (studentAuthor.dateStart IS NULL OR studentAuthor.dateStart<=:today)
+                AND (studentAuthor.dateEnd IS NULL OR studentAuthor.dateEnd>=:today))";
+
+            $parentPostFilter = " AND (cardPost.parentsCanView IS NULL OR cardPost.parentsCanView<>'N')";
+            if ($parentView == 'Own child') {
+                $parentPostFilter .= " AND (cardPost.gibbonPersonID=:gibbonPersonID OR NOT ".$studentAuthor.")";
+            } elseif ($parentView == 'None') {
+                $parentPostFilter .= " AND NOT ".$studentAuthor;
+            }
+        }
+
         $sql = "SELECT gibbonCourseClass.gibbonCourseClassID, gibbonCourse.name AS courseName, gibbonCourse.nameShort AS course, gibbonCourseClass.nameShort AS class, gibbonCourseClassPerson.role,
                     classStreamClass.colour, classStreamClass.headerImage,
                     (SELECT GROUP_CONCAT(CONCAT_WS('|', teacher.title, teacher.preferredName, teacher.surname) ORDER BY teacher.surname SEPARATOR ';;')
                         FROM gibbonCourseClassPerson AS teacherRole
                         JOIN gibbonPerson AS teacher ON (teacher.gibbonPersonID=teacherRole.gibbonPersonID)
                         WHERE teacherRole.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID AND teacherRole.role='Teacher' AND teacher.status='Full') AS teachers,
-                    (SELECT COUNT(*) FROM classStreamPost WHERE classStreamPost.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID AND classStreamPost.timestampPublished<=:now) AS postCount,
-                    (SELECT MAX(timestampPublished) FROM classStreamPost WHERE classStreamPost.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID AND classStreamPost.timestampPublished<=:now) AS lastPost
+                    (SELECT COUNT(*) FROM classStreamPost AS cardPost".$parentPostJoin." WHERE cardPost.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID AND cardPost.timestampPublished<=:now".$parentPostFilter.") AS postCount,
+                    (SELECT MAX(cardPost.timestampPublished) FROM classStreamPost AS cardPost".$parentPostJoin." WHERE cardPost.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID AND cardPost.timestampPublished<=:now".$parentPostFilter.") AS lastPost
                 FROM gibbonCourseClassPerson
                 JOIN gibbonCourseClass ON (gibbonCourseClass.gibbonCourseClassID=gibbonCourseClassPerson.gibbonCourseClassID)
                 JOIN gibbonCourse ON (gibbonCourse.gibbonCourseID=gibbonCourseClass.gibbonCourseID)
@@ -167,6 +211,7 @@ class PostGateway extends QueryableGateway
                 WHERE gibbonCourse.gibbonSchoolYearID=:gibbonSchoolYearID
                 AND gibbonCourseClassPerson.gibbonPersonID=:gibbonPersonID
                 AND gibbonCourseClassPerson.role NOT LIKE '% - Left'
+                ".($parentView !== null ? " AND (classStreamClass.visibleToParents IS NULL OR classStreamClass.visibleToParents='Y')" : '')."
                 ORDER BY gibbonCourse.nameShort, gibbonCourseClass.nameShort";
 
         return $this->db()->select($sql, $data);
@@ -347,5 +392,23 @@ class PostGateway extends QueryableGateway
                 LIMIT 1";
 
         return $this->db()->selectOne($sql, $data);
+    }
+
+    /**
+     * Was the post author acting as a student of this class? Active staff takes precedence over an
+     * overlapping student row, while Student - Left remains a student-authored post. A person with
+     * no class role, such as an administrator using the all-classes action, is not a student.
+     */
+    public function isStudentAuthorForClass($gibbonCourseClassID, $gibbonPersonID): bool
+    {
+        $data = ['gibbonCourseClassID' => $gibbonCourseClassID, 'gibbonPersonID' => $gibbonPersonID];
+        $sql = "SELECT role FROM gibbonCourseClassPerson
+                WHERE gibbonCourseClassID=:gibbonCourseClassID AND gibbonPersonID=:gibbonPersonID
+                AND role IN ('Teacher', 'Assistant', 'Technician', 'Student', 'Teacher - Left', 'Student - Left')
+                ORDER BY FIELD(role, 'Teacher', 'Assistant', 'Technician', 'Student', 'Teacher - Left', 'Student - Left')
+                LIMIT 1";
+        $role = $this->db()->selectOne($sql, $data);
+
+        return in_array($role, ['Student', 'Student - Left'], true);
     }
 }

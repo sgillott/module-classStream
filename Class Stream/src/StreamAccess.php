@@ -67,7 +67,8 @@ class StreamAccess
      *   Keys: class (PostGateway::getClassInfoByID row), role, viewingAs (Staff, Student
      *   or Parent, for the Planner's visibility flags), isStaff, canPost, canComment, canManage,
      *   muted, parentView (the school setting, parents only), childID (parents only),
-     *   settings (colour, colourKey, headerImage, studentAccess, plannerDisplay, with defaults).
+     *   settings (colour, colourKey, headerImage, studentAccess, visibleToParents,
+     *   plannerDisplay, with defaults).
      */
     public function forClass(string $scope, $gibbonCourseClassID, $gibbonPersonIDStudent = null): ?array
     {
@@ -138,7 +139,7 @@ class StreamAccess
      */
     protected function forParent(array $class, array $settings, $gibbonPersonIDStudent): ?array
     {
-        if (empty($gibbonPersonIDStudent)) {
+        if (empty($gibbonPersonIDStudent) || $settings['visibleToParents'] != 'Y') {
             return null;
         }
 
@@ -152,7 +153,7 @@ class StreamAccess
             return null;
         }
 
-        $parentView = $this->settingGateway->getSettingByScope('Class Stream', 'parentView');
+        $parentView = $this->getParentView();
 
         return [
             'class'      => $class,
@@ -163,10 +164,20 @@ class StreamAccess
             'canPost'    => false,
             'canComment' => false,
             'muted'      => false,
-            'parentView' => in_array($parentView, ['Own child', 'All redacted', 'None']) ? $parentView : 'Own child',
+            'parentView' => $parentView,
             'childID'    => $children[intval($gibbonPersonIDStudent)]['gibbonPersonID'],
             'settings'   => $settings,
         ];
+    }
+
+    /**
+     * The validated school-wide lens used whenever parent-facing stream data is selected.
+     */
+    public function getParentView(): string
+    {
+        $parentView = $this->settingGateway->getSettingByScope('Class Stream', 'parentView');
+
+        return in_array($parentView, ['Own child', 'All redacted', 'None'], true) ? $parentView : 'Own child';
     }
 
     /**
@@ -201,6 +212,7 @@ class StreamAccess
         $assessmentTypes = isset($stored['assessmentTypes']) && $stored['assessmentTypes'] !== null
             ? json_decode($stored['assessmentTypes'], true)
             : null;
+        $plannerDisplay = $stored['plannerDisplay'] ?? 'Condensed';
 
         return [
             'colourKey'      => $colourKey,
@@ -209,18 +221,22 @@ class StreamAccess
             'headerImage'    => $stored['headerImage'] ?? '',
             'studentAccess'  => in_array($studentAccess, ['Post', 'Comment', 'None']) ? $studentAccess : 'Comment',
             'studentAccessStored' => $stored['studentAccess'] ?? '',
-            'plannerDisplay' => $stored['plannerDisplay'] ?? 'Condensed',
+            'visibleToParents' => ($stored['visibleToParents'] ?? 'Y') == 'N' ? 'N' : 'Y',
+            'plannerDisplay' => in_array($plannerDisplay, ['Details', 'Condensed', 'Hidden'], true) ? $plannerDisplay : 'Condensed',
             'showAssessments' => in_array(($stored['showAssessments'] ?? 'Y'), ['Y', 'N'], true) ? ($stored['showAssessments'] ?? 'Y') : 'Y',
             'assessmentTypes' => is_array($assessmentTypes) ? $assessmentTypes : ($assessmentTypes === null ? null : []),
         ];
     }
 
     /**
-     * May the person change or remove this post? Its author, or anyone who manages the class.
+     * May the person change or remove this post? Class managers may manage every publication
+     * state; other authors may manage only their own posts once they are live on the stream.
      */
     public function canEditPost(array $access, array $post): bool
     {
-        return $access['canManage'] || (!empty($access['canPost']) && $post['gibbonPersonID'] == $this->session->get('gibbonPersonID'));
+        $isPublished = !empty($post['timestampPublished']) && $post['timestampPublished'] <= date('Y-m-d H:i:s');
+
+        return $access['canManage'] || ($isPublished && !empty($access['canPost']) && $post['gibbonPersonID'] == $this->session->get('gibbonPersonID'));
     }
 
     /**

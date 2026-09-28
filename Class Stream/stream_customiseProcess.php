@@ -19,10 +19,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 use Gibbon\FileUploader;
 use Gibbon\Data\Validator;
+use Gibbon\Domain\System\SettingGateway;
 use Gibbon\Module\ClassStream\Theme;
 use Gibbon\Module\ClassStream\StreamAccess;
 use Gibbon\Module\ClassStream\Domain\LinkGateway;
 use Gibbon\Module\ClassStream\Domain\ClassSettingsGateway;
+use Gibbon\Module\ClassStream\Domain\AssessmentItemGateway;
 
 require_once '../../gibbon.php';
 require_once __DIR__.'/moduleFunctions.php';
@@ -48,18 +50,31 @@ if (empty($access) || !$access['canManage']) {
 
 $colour = $_POST['colour'] ?? '';
 $studentAccess = $_POST['studentAccess'] ?? '';
-$plannerDisplay = $_POST['plannerDisplay'] ?? '';
+$visibleToParents = $_POST['visibleToParents'] ?? '';
 $showAssessments = $_POST['showAssessments'] ?? '';
+$showLessons = $container->get(SettingGateway::class)->getSettingByScope('Class Stream', 'showLessons') == 'Y';
+
+if ($showLessons) {
+    $plannerDisplay = $_POST['plannerDisplay'] ?? '';
+} else {
+    $plannerVisible = $_POST['plannerVisible'] ?? '';
+    $currentPlannerDisplay = $access['settings']['plannerDisplay'];
+    $plannerDisplay = $plannerVisible == 'N'
+        ? 'Hidden'
+        : ($currentPlannerDisplay == 'Hidden' ? 'Condensed' : $currentPlannerDisplay);
+}
 
 if (!isset(Theme::PALETTE[$colour])
     || !in_array($studentAccess, ['', 'Post', 'Comment', 'None'], true)
+    || !in_array($visibleToParents, ['Y', 'N'], true)
+    || (!$showLessons && !in_array($plannerVisible, ['Y', 'N'], true))
     || !in_array($plannerDisplay, ['Details', 'Condensed', 'Hidden'], true)
     || !in_array($showAssessments, ['Y', 'N'], true)) {
     header("Location: {$URLBack}&return=error1");
     exit;
 }
 
-$availableAssessmentTypes = $pdo->select("SELECT DISTINCT type FROM gibbonMarkbookColumn WHERE type IS NOT NULL AND type<>'' ORDER BY type")->fetchAll(\PDO::FETCH_COLUMN);
+$availableAssessmentTypes = $container->get(AssessmentItemGateway::class)->selectAssessmentTypesByClass($gibbonCourseClassID)->fetchAll(\PDO::FETCH_COLUMN);
 $assessmentTypes = $access['settings']['assessmentTypes'];
 if (!empty($availableAssessmentTypes)) {
     $postedAssessmentTypes = $_POST['assessmentTypes'] ?? [];
@@ -72,6 +87,7 @@ if (!empty($availableAssessmentTypes)) {
 $data = [
     'colour'          => $colour,
     'studentAccess'   => $studentAccess != '' ? $studentAccess : null,
+    'visibleToParents' => $visibleToParents,
     'plannerDisplay'  => $plannerDisplay,
     'showAssessments' => $showAssessments,
     'assessmentTypes' => $assessmentTypes === null ? null : json_encode($assessmentTypes),

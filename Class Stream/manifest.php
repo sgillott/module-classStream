@@ -25,7 +25,7 @@ $description = 'A Google Classroom-style stream for every class: announcements w
 $entryURL    = 'stream.php';
 $type        = 'Additional';
 $category    = 'Learn';
-$version     = '0.10.01';
+$version     = '0.11.00';
 $author      = 'Steve Gillott';
 $url         = '';
 
@@ -83,6 +83,7 @@ $moduleTables[] = "CREATE TABLE `classStreamClass` (
     `colour` varchar(20) DEFAULT NULL,
     `headerImage` varchar(255) DEFAULT NULL,
     `studentAccess` enum('Post','Comment','None') DEFAULT NULL,
+    `visibleToParents` enum('N','Y') NOT NULL DEFAULT 'Y',
     `plannerDisplay` enum('Details','Condensed','Hidden') NOT NULL DEFAULT 'Condensed',
     `showAssessments` enum('N','Y') NOT NULL DEFAULT 'Y',
     `assessmentTypes` text DEFAULT NULL,

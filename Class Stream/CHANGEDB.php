@@ -150,3 +150,11 @@ $sql[$count][1] = "ALTER TABLE classStreamPost ADD COLUMN parentsCanView enum('Y
 -- visible, same as Y; only an explicit N hides one). A third post type, Homework, adds no column
 -- here: it writes straight to core's gibbonPlannerEntry instead of classStreamPost, reusing the
 -- homework card the Planner rows already render on the stream.";
+
+// v0.11.00
+$count++;
+$sql[$count][0] = "0.11.00";
+$sql[$count][1] = "ALTER TABLE classStreamClass ADD COLUMN visibleToParents enum('N','Y') NOT NULL DEFAULT 'Y' AFTER studentAccess
+;end
+-- Per-class parent visibility. Existing classes remain visible to parents by default; teachers
+-- can now hide an entire class stream without changing access for staff or students.";

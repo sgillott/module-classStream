@@ -103,31 +103,31 @@ if ($access['canManage']) {
     $row = $form->addRow();
         $row->addLabel('pinned', __m('Pin to top'));
         $row->addYesNo('pinned')->checked($post['pinned'] == 'Y' ? 'Y' : 'N');
+
+    $row = $form->addRow();
+        $row->addLabel('parentsCanView', __m('Parents can view'))->description(__m('Switch off to keep this post out of parents\' view of the stream.'));
+        $row->addYesNo('parentsCanView')->checked($post['parentsCanView'] != 'N' ? 'Y' : 'N');
+
+    // A published post stays published unless the teacher changes it here; a scheduled one shows its time.
+    $isDraft = empty($post['timestampPublished']);
+    $isScheduled = !$isDraft && $post['timestampPublished'] > date('Y-m-d H:i:s');
+    $publishSelected = $isDraft ? 'draft' : ($isScheduled ? 'schedule' : 'now');
+    $publishDate = $isScheduled ? Format::date(substr($post['timestampPublished'], 0, 10)) : '';
+    $publishTime = $isScheduled ? substr($post['timestampPublished'], 11, 5) : '';
+
+    // When it goes on the stream: now, a draft to finish later, or a chosen date and time. A
+    // scheduled post is announced to the class on the first stream view after its time.
+    $row = $form->addRow();
+        $row->addLabel('publish', __m('Publish'));
+        $row->addSelect('publish')->fromArray(['now' => ($isDraft || $isScheduled ? __m('Now') : __m('Published (keep as is)')), 'draft' => __m('Save as draft'), 'schedule' => __m('Schedule for a date and time')])->selected($publishSelected)->required();
+
+    $form->toggleVisibilityByClass('publishSchedule')->onSelect('publish')->when('schedule');
+    $row = $form->addRow()->addClass('publishSchedule');
+        $row->addLabel('publishDate', __m('Publish on'));
+        $col = $row->addColumn('publishDate');
+        $col->addDate('publishDate')->addClass('mr-2')->setValue($publishDate);
+        $col->addTime('publishTime')->setValue($publishTime);
 }
-
-$row = $form->addRow();
-    $row->addLabel('parentsCanView', __m('Parents can view'))->description(__m('Switch off to keep this post out of parents\' view of the stream.'));
-    $row->addYesNo('parentsCanView')->checked($post['parentsCanView'] != 'N' ? 'Y' : 'N');
-
-// A published post stays published unless the teacher changes it here; a scheduled one shows its time.
-$isDraft = empty($post['timestampPublished']);
-$isScheduled = !$isDraft && $post['timestampPublished'] > date('Y-m-d H:i:s');
-$publishSelected = $isDraft ? 'draft' : ($isScheduled ? 'schedule' : 'now');
-$publishDate = $isScheduled ? Format::date(substr($post['timestampPublished'], 0, 10)) : '';
-$publishTime = $isScheduled ? substr($post['timestampPublished'], 11, 5) : '';
-
-// When it goes on the stream: now, a draft to finish later, or a chosen date and time. A
-// scheduled post is announced to the class on the first stream view after its time.
-$row = $form->addRow();
-    $row->addLabel('publish', __m('Publish'));
-    $row->addSelect('publish')->fromArray(['now' => ($isDraft || $isScheduled ? __m('Now') : __m('Published (keep as is)')), 'draft' => __m('Save as draft'), 'schedule' => __m('Schedule for a date and time')])->selected($publishSelected)->required();
-
-$form->toggleVisibilityByClass('publishSchedule')->onSelect('publish')->when('schedule');
-$row = $form->addRow()->addClass('publishSchedule');
-    $row->addLabel('publishDate', __m('Publish on'));
-    $col = $row->addColumn('publishDate');
-    $col->addDate('publishDate')->addClass('mr-2')->setValue($publishDate);
-    $col->addTime('publishTime')->setValue($publishTime);
 
 $row = $form->addRow();
     $row->addFooter();

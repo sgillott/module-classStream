@@ -87,6 +87,18 @@ class PlannerItemGateway extends QueryableGateway
         return true;
     }
 
+    /**
+     * Is this Planner entry one the stream renderer may currently include?
+     */
+    public static function isVisibleOnStream(array $item, $viewingAs, $plannerDisplay, bool $showHomework, bool $showLessons): bool
+    {
+        if ($plannerDisplay == 'Hidden' || (!$showHomework && !$showLessons)) return false;
+        if (empty($item['date']) || $item['date'] > date('Y-m-d')) return false;
+        if (!self::isVisibleTo($item, $viewingAs)) return false;
+
+        return $showLessons || ($showHomework && ($item['homework'] ?? 'N') == 'Y');
+    }
+
     protected function visibilityClause($viewingAs): string
     {
         if ($viewingAs == 'Student') return " AND gibbonPlannerEntry.viewableStudents='Y'";

@@ -119,6 +119,12 @@ class StreamRenderer implements ContainerAwareInterface
         $isOtherStudent = function ($personID) use ($isStudentAuthor, $childID) {
             return $isStudentAuthor($personID) && intval($personID) != $childID;
         };
+        $isStudentPost = function (array $post) use ($isParent) {
+            return $isParent && !empty($post['studentAuthored']);
+        };
+        $isOtherStudentPost = function (array $post) use ($isStudentPost, $childID) {
+            return $isStudentPost($post) && intval($post['gibbonPersonID']) != $childID;
+        };
         $redact = function (array $row) {
             $row['title'] = '';
             $row['preferredName'] = __m('Student');
@@ -130,6 +136,7 @@ class StreamRenderer implements ContainerAwareInterface
 
         // POSTS
         $posts = $this->postGateway->selectPostsByClass($gibbonCourseClassID, $gibbonModuleID)->fetchAll();
+        $posts = array_values(array_filter($posts, [PostGateway::class, 'isVisibleOnStream']));
 
         // Staff see where a mirrored or synced copy came from; students just see the post.
         $mirrorSources = $access['isStaff'] ? $this->linkGateway->selectSourcesByClass($gibbonCourseClassID)->fetchKeyPair() : [];
@@ -144,13 +151,13 @@ class StreamRenderer implements ContainerAwareInterface
 
         if ($isParent && $parentView == 'None') {
             // None: only what teachers post.
-            $posts = array_values(array_filter($posts, function ($post) use ($isStudentAuthor) {
-                return !$isStudentAuthor($post['gibbonPersonID']);
+            $posts = array_values(array_filter($posts, function ($post) use ($isStudentPost) {
+                return !$isStudentPost($post);
             }));
         } elseif ($isParent && $parentView == 'Own child') {
             // Own child: another student's post is not shown at all.
-            $posts = array_values(array_filter($posts, function ($post) use ($isOtherStudent) {
-                return !$isOtherStudent($post['gibbonPersonID']);
+            $posts = array_values(array_filter($posts, function ($post) use ($isOtherStudentPost) {
+                return !$isOtherStudentPost($post);
             }));
         }
 
@@ -165,12 +172,18 @@ class StreamRenderer implements ContainerAwareInterface
         $plannerItems = [];
         if ($plannerDisplay != 'Hidden' && ($showHomework || $showLessons)) {
             $plannerItems = $this->plannerItemGateway->selectItemsByClass($gibbonCourseClassID, $viewingAs, $showLessons)->fetchAll();
+            $plannerItems = array_values(array_filter($plannerItems, function ($item) use ($viewingAs, $plannerDisplay, $showHomework, $showLessons) {
+                return PlannerItemGateway::isVisibleOnStream($item, $viewingAs, $plannerDisplay, $showHomework, $showLessons);
+            }));
         }
 
         $assessmentItems = [];
         $assessmentTypes = $access['settings']['assessmentTypes'];
         if ($access['settings']['showAssessments'] == 'Y' && (!is_array($assessmentTypes) || !empty($assessmentTypes))) {
             $assessmentItems = $this->assessmentItemGateway->selectAssessmentsByClass($gibbonCourseClassID, $viewingAs, $assessmentTypes)->fetchAll();
+            $assessmentItems = array_values(array_filter($assessmentItems, function ($item) use ($access, $viewingAs, $assessmentTypes) {
+                return AssessmentItemGateway::isVisibleOnStream($item, $viewingAs, $access['settings']['showAssessments'], $assessmentTypes);
+            }));
         }
 
         // A markbook column can be linked to its Planner lesson. When the assessment is visible
@@ -259,7 +272,7 @@ class StreamRenderer implements ContainerAwareInterface
         foreach ($pageItems as $index => $item) {
             if ($item['kind'] == 'post') {
                 $id = $item['classStreamPostID'];
-                if ($isOtherStudent($item['gibbonPersonID'])) {
+                if ($isOtherStudentPost($item)) {
                     $item = $redact($item);
                 }
                 $item['body'] = $this->validator->sanitizeRichText($item['body']);

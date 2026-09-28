@@ -125,11 +125,12 @@ if ($scope == 'all' || $scope == 'department') {
     echo $form->getOutput();
 }
 
-$classes = $postGateway->selectClassesByPerson($gibbonSchoolYearID, $gibbonPersonID)->fetchAll();
+$parentView = $scope == 'parent' ? $container->get(StreamAccess::class)->getParentView() : null;
+$classes = $postGateway->selectClassesByPerson($gibbonSchoolYearID, $gibbonPersonID, $parentView)->fetchAll();
 
 // "N new": posts by others since the viewer last opened each stream; a stream never opened
 // counts every post. Parents are counted against their own visits, not the child's.
-$newCounts = $container->get(ViewGateway::class)->selectNewCountsByPerson($session->get('gibbonPersonID'))->fetchKeyPair();
+$newCounts = $container->get(ViewGateway::class)->selectNewCountsByPerson($session->get('gibbonPersonID'), $gibbonPersonIDStudent, $parentView)->fetchKeyPair();
 
 echo $page->fetchFromTemplate('streamCards.twig.html', [
     'heading'               => $heading,

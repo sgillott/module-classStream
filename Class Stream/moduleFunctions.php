@@ -262,16 +262,19 @@ function classStreamIsMirrorCopy($container, array $post): bool
 }
 
 /**
- * Push a post to every class its class links to. Only a post that is on the stream now is
- * synced: drafts stay private to their class, and a scheduled post reaches the linked classes when
- * its time comes (classStreamPublishDue calls this then). A copy is never synced on again, so
- * links cannot loop. Called after a post is added, edited, published, or has an attachment removed.
+ * Push a staff-authored post to every class its class links to. Student posts stay in their own
+ * class. Only a post that is on the stream now is synced: drafts stay private to their class, and
+ * a scheduled post reaches the linked classes when its time comes (classStreamPublishDue calls
+ * this then). A copy is never synced on again, so links cannot loop. Called after a post is added,
+ * edited, published, or has an attachment removed.
  */
 function classStreamSyncCopies($container, $session, $classStreamPostID): void
 {
-    $post = $container->get(PostGateway::class)->getPostByID($classStreamPostID);
+    $postGateway = $container->get(PostGateway::class);
+    $post = $postGateway->getPostByID($classStreamPostID);
     if (empty($post) || classStreamIsMirrorCopy($container, $post)) return;
     if (empty($post['timestampPublished']) || $post['timestampPublished'] > date('Y-m-d H:i:s')) return;
+    if ($postGateway->isStudentAuthorForClass($post['gibbonCourseClassID'], $post['gibbonPersonID'])) return;
 
     foreach ($container->get(LinkGateway::class)->selectTargetsByClass($post['gibbonCourseClassID'])->fetchAll() as $target) {
         classStreamCopyPost($container, $post, $target['gibbonCourseClassIDTarget']);
@@ -303,10 +306,10 @@ function classStreamPublishTime($publish, $date, $time)
 
 /**
  * Tell the class about every post of theirs that is on the stream and has not been announced yet,
- * and push it to the linked classes. Run whenever a stream is rendered or a post is saved, so a
- * scheduled post is announced, and synced, on the first visit after its time without any
- * background job. Emails go out here too: core's NotificationSender mails every recipient who has
- * notification emails switched on, in the same request.
+ * and push eligible staff posts to linked classes. Run whenever a stream is rendered or a post is
+ * saved, so a scheduled staff post is announced, and synced, on the first visit after its time
+ * without any background job. Emails go out here too: core's NotificationSender mails every
+ * recipient who has notification emails switched on, in the same request.
  */
 function classStreamPublishDue($container, $session, array $class): void
 {

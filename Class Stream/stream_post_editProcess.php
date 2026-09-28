@@ -63,18 +63,18 @@ $data = [
     'timestampModified' => date('Y-m-d H:i:s'),
 ];
 
-// Publish state. "now" on an already published post keeps its original time; on a draft or a
-// scheduled post it publishes at this moment. Anything else replaces the time as chosen.
-$publish = $_POST['publish'] ?? 'now';
-$wasLive = !empty($post['timestampPublished']) && $post['timestampPublished'] <= date('Y-m-d H:i:s');
-if (!($publish == 'now' && $wasLive)) {
-    $data['timestampPublished'] = classStreamPublishTime($publish, $_POST['publishDate'] ?? '', $_POST['publishTime'] ?? '');
-    if (!$wasLive) $data['notified'] = 'N';
-}
 if ($access['canManage']) {
+    // Publish state. "now" on an already published post keeps its original time; on a draft or a
+    // scheduled post it publishes at this moment. Students cannot alter publication state.
+    $publish = $_POST['publish'] ?? 'now';
+    $wasLive = !empty($post['timestampPublished']) && $post['timestampPublished'] <= date('Y-m-d H:i:s');
+    if (!($publish == 'now' && $wasLive)) {
+        $data['timestampPublished'] = classStreamPublishTime($publish, $_POST['publishDate'] ?? '', $_POST['publishTime'] ?? '');
+        if (!$wasLive) $data['notified'] = 'N';
+    }
     $data['pinned'] = ($_POST['pinned'] ?? '') == 'Y' ? 'Y' : 'N';
+    $data['parentsCanView'] = ($_POST['parentsCanView'] ?? '') == 'Y' ? 'Y' : 'N';
 }
-$data['parentsCanView'] = ($_POST['parentsCanView'] ?? '') == 'Y' ? 'Y' : 'N';
 
 if (!$postGateway->update($classStreamPostID, $data)) {
     header("Location: {$URLBack}&return=error2");

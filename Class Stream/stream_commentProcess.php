@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 use Gibbon\Data\Validator;
+use Gibbon\Domain\System\SettingGateway;
 use Gibbon\Module\ClassStream\StreamAccess;
 use Gibbon\Module\ClassStream\Domain\PostGateway;
 use Gibbon\Module\ClassStream\Domain\CommentGateway;
@@ -50,19 +51,41 @@ if (empty($access) || !$access['canComment']) {
     exit;
 }
 
-// The target must belong to this class and be visible to the person's role where the source
-// supports role-specific visibility, so nobody comments on a hidden Planner or markbook item.
+// A comment target must be one the current person can actually see on this stream. The predicates
+// below are shared with StreamRenderer so crafted requests cannot reach hidden timeline items.
 if ($targetType == 'post') {
     $post = $container->get(PostGateway::class)->getPostByID($targetID);
-    $targetValid = !empty($post) && $post['gibbonCourseClassID'] == $gibbonCourseClassID;
+    $targetValid = !empty($post)
+        && $post['gibbonCourseClassID'] == $gibbonCourseClassID
+        && PostGateway::isVisibleOnStream($post);
     $foreignTable = CommentGateway::TARGET_POST;
 } elseif ($targetType == 'planner') {
+    $settingGateway = $container->get(SettingGateway::class);
+    $showHomework = $settingGateway->getSettingByScope('Class Stream', 'showHomework') == 'Y';
+    $showLessons = $settingGateway->getSettingByScope('Class Stream', 'showLessons') == 'Y';
+    $plannerDisplay = $access['settings']['plannerDisplay'];
     $item = $container->get(PlannerItemGateway::class)->getItemByID($targetID);
-    $targetValid = !empty($item) && $item['gibbonCourseClassID'] == $gibbonCourseClassID && PlannerItemGateway::isVisibleTo($item, $access['viewingAs']);
+    $targetValid = !empty($item)
+        && $item['gibbonCourseClassID'] == $gibbonCourseClassID
+        && PlannerItemGateway::isVisibleOnStream($item, $access['viewingAs'], $plannerDisplay, $showHomework, $showLessons);
+
+    // A visible assessment replaces its linked non-homework lesson row in the timeline.
+    if ($targetValid && $item['homework'] != 'Y' && $access['settings']['showAssessments'] == 'Y') {
+        $assessmentTypes = $access['settings']['assessmentTypes'];
+        foreach ($container->get(AssessmentItemGateway::class)->selectAssessmentsByPlannerEntry($targetID)->fetchAll() as $assessment) {
+            if ($assessment['gibbonCourseClassID'] == $gibbonCourseClassID
+                && AssessmentItemGateway::isVisibleOnStream($assessment, $access['viewingAs'], $access['settings']['showAssessments'], $assessmentTypes)) {
+                $targetValid = false;
+                break;
+            }
+        }
+    }
     $foreignTable = CommentGateway::TARGET_PLANNER;
 } elseif ($targetType == 'assessment') {
     $item = $container->get(AssessmentItemGateway::class)->getAssessmentByID($targetID);
-    $targetValid = !empty($item) && $item['gibbonCourseClassID'] == $gibbonCourseClassID && AssessmentItemGateway::isVisibleTo($item, $access['viewingAs']);
+    $targetValid = !empty($item)
+        && $item['gibbonCourseClassID'] == $gibbonCourseClassID
+        && AssessmentItemGateway::isVisibleOnStream($item, $access['viewingAs'], $access['settings']['showAssessments'], $access['settings']['assessmentTypes']);
     $foreignTable = CommentGateway::TARGET_ASSESSMENT;
 } else {
     $targetValid = false;
