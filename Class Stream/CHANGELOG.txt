@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+v0.11.01
+--------
+Parent dashboard hooks preserve the current child's identity, so later hooks such as Academic Calendar receive the student rather than the logged-in parent.
+Class cards count visible Planner homework and Markbook assessments as activity instead of reporting that there are no posts.
+
 v0.11.00
 --------
 Teachers can hide an entire class stream from parents in Class Settings, without affecting staff or student access.

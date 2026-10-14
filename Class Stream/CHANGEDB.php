@@ -158,3 +158,9 @@ $sql[$count][1] = "ALTER TABLE classStreamClass ADD COLUMN visibleToParents enum
 ;end
 -- Per-class parent visibility. Existing classes remain visible to parents by default; teachers
 -- can now hide an entire class stream without changing access for staff or students.";
+
+// v0.11.01
+$count++;
+$sql[$count][0] = "0.11.01";
+$sql[$count][1] = "-- Code only: preserve the child identity between parent dashboard hooks and include visible
+-- Planner homework and Markbook assessments in class-card activity summaries.";
