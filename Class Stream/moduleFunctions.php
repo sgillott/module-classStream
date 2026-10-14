@@ -355,8 +355,8 @@ function classStreamDeletePost($container, $session, array $post): bool
 
 /**
  * Turn a class row from PostGateway::selectClassesByPerson() into what the cards template needs:
- * the palette colour, the new-post count, and the teachers in the school's formal staff format
- * (the same one the stream's Teachers panel uses).
+ * the palette colour, activity summary, new-post count, and teachers in the school's formal staff
+ * format (the same one the stream's Teachers panel uses).
  */
 function classStreamDecorateCard(array $class, array $newCounts): array
 {
@@ -364,6 +364,14 @@ function classStreamDecorateCard(array $class, array $newCounts): array
     $class['colourKey'] = $key;
     $class['colour'] = Theme::colour($key);
     $class['newCount'] = isset($newCounts[$class['gibbonCourseClassID']]) ? intval($newCounts[$class['gibbonCourseClassID']]) : intval($class['postCount']);
+    $class['activityCount'] = intval($class['postCount']) + intval($class['plannerItemCount'] ?? 0) + intval($class['assessmentItemCount'] ?? 0);
+
+    $activityDates = array_filter([
+        $class['lastPost'] ?? null,
+        $class['lastPlannerItem'] ?? null,
+        $class['lastAssessmentItem'] ?? null,
+    ]);
+    $class['lastActivity'] = empty($activityDates) ? null : max($activityDates);
 
     $names = [];
     foreach (array_filter(explode(';;', (string) $class['teachers'])) as $teacher) {

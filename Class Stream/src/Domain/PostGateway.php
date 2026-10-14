@@ -165,19 +165,18 @@ class PostGateway extends QueryableGateway
 
     /**
      * The classes a person belongs to in a school year (any live role), with the class colour,
-     * the teachers' names, the post count and the newest post time, for the My Streams cards.
+     * the teachers' names, and summaries of the visible stream activity for the My Streams cards.
      * Supplying a Parent View mode omits hidden classes and applies that child's parent lens to
-     * the post count and latest-post time shown on each card.
+     * the activity shown on each card.
      */
     public function selectClassesByPerson($gibbonSchoolYearID, $gibbonPersonID, $parentView = null)
     {
-        $data = ['gibbonSchoolYearID' => $gibbonSchoolYearID, 'gibbonPersonID' => $gibbonPersonID, 'now' => date('Y-m-d H:i:s')];
+        $data = ['gibbonSchoolYearID' => $gibbonSchoolYearID, 'gibbonPersonID' => $gibbonPersonID, 'now' => date('Y-m-d H:i:s'), 'today' => date('Y-m-d')];
         $parentView = in_array($parentView, ['Own child', 'All redacted', 'None'], true) ? $parentView : null;
         $parentPostJoin = '';
         $parentPostFilter = '';
 
         if ($parentView !== null) {
-            $data['today'] = date('Y-m-d');
             $parentPostJoin = " LEFT JOIN classStreamPost AS cardSource ON (cardSource.classStreamPostID=cardPost.classStreamPostIDSource)";
             $studentAuthor = "EXISTS (SELECT 1 FROM gibbonCourseClassPerson AS studentRole
                 JOIN gibbonPerson AS studentAuthor ON (studentAuthor.gibbonPersonID=studentRole.gibbonPersonID)
@@ -196,6 +195,38 @@ class PostGateway extends QueryableGateway
             }
         }
 
+        $plannerVisibility = $parentView !== null
+            ? " AND cardPlanner.viewableParents='Y'"
+            : " AND (gibbonCourseClassPerson.role<>'Student' OR cardPlanner.viewableStudents='Y')";
+        $assessmentVisibility = $parentView !== null
+            ? " AND cardAssessment.viewableParents='Y'"
+            : " AND (gibbonCourseClassPerson.role<>'Student' OR cardAssessment.viewableStudents='Y')";
+        $linkedAssessmentVisibility = $parentView !== null
+            ? " AND linkedAssessment.viewableParents='Y'"
+            : " AND (gibbonCourseClassPerson.role<>'Student' OR linkedAssessment.viewableStudents='Y')";
+
+        $assessmentSettings = " AND COALESCE(classStreamClass.showAssessments, 'Y')='Y'
+            AND (classStreamClass.assessmentTypes IS NULL
+                OR JSON_CONTAINS(classStreamClass.assessmentTypes, JSON_QUOTE(COALESCE(cardAssessment.type, '')))=1)";
+        $linkedAssessmentSettings = " AND COALESCE(classStreamClass.showAssessments, 'Y')='Y'
+            AND (classStreamClass.assessmentTypes IS NULL
+                OR JSON_CONTAINS(classStreamClass.assessmentTypes, JSON_QUOTE(COALESCE(linkedAssessment.type, '')))=1)";
+        $plannerFilter = " WHERE cardPlanner.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID
+            AND cardPlanner.date<=:today
+            AND COALESCE(classStreamClass.plannerDisplay, 'Condensed')<>'Hidden'
+            AND (
+                COALESCE((SELECT value FROM gibbonSetting WHERE scope='Class Stream' AND name='showLessons' LIMIT 1), 'N')='Y'
+                OR (cardPlanner.homework='Y' AND COALESCE((SELECT value FROM gibbonSetting WHERE scope='Class Stream' AND name='showHomework' LIMIT 1), 'Y')='Y')
+            )".$plannerVisibility."
+            AND (cardPlanner.homework='Y' OR NOT EXISTS (
+                SELECT 1 FROM gibbonMarkbookColumn AS linkedAssessment
+                WHERE linkedAssessment.gibbonPlannerEntryID=cardPlanner.gibbonPlannerEntryID
+                AND linkedAssessment.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID
+                AND linkedAssessment.date IS NOT NULL".$linkedAssessmentSettings.$linkedAssessmentVisibility."
+            ))";
+        $assessmentFilter = " WHERE cardAssessment.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID
+            AND cardAssessment.date IS NOT NULL".$assessmentSettings.$assessmentVisibility;
+
         $sql = "SELECT gibbonCourseClass.gibbonCourseClassID, gibbonCourse.name AS courseName, gibbonCourse.nameShort AS course, gibbonCourseClass.nameShort AS class, gibbonCourseClassPerson.role,
                     classStreamClass.colour, classStreamClass.headerImage,
                     (SELECT GROUP_CONCAT(CONCAT_WS('|', teacher.title, teacher.preferredName, teacher.surname) ORDER BY teacher.surname SEPARATOR ';;')
@@ -203,7 +234,11 @@ class PostGateway extends QueryableGateway
                         JOIN gibbonPerson AS teacher ON (teacher.gibbonPersonID=teacherRole.gibbonPersonID)
                         WHERE teacherRole.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID AND teacherRole.role='Teacher' AND teacher.status='Full') AS teachers,
                     (SELECT COUNT(*) FROM classStreamPost AS cardPost".$parentPostJoin." WHERE cardPost.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID AND cardPost.timestampPublished<=:now".$parentPostFilter.") AS postCount,
-                    (SELECT MAX(cardPost.timestampPublished) FROM classStreamPost AS cardPost".$parentPostJoin." WHERE cardPost.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID AND cardPost.timestampPublished<=:now".$parentPostFilter.") AS lastPost
+                    (SELECT MAX(cardPost.timestampPublished) FROM classStreamPost AS cardPost".$parentPostJoin." WHERE cardPost.gibbonCourseClassID=gibbonCourseClass.gibbonCourseClassID AND cardPost.timestampPublished<=:now".$parentPostFilter.") AS lastPost,
+                    (SELECT COUNT(*) FROM gibbonPlannerEntry AS cardPlanner".$plannerFilter.") AS plannerItemCount,
+                    (SELECT MAX(CONCAT(cardPlanner.date, ' ', COALESCE(cardPlanner.timeStart, '00:00:00'))) FROM gibbonPlannerEntry AS cardPlanner".$plannerFilter.") AS lastPlannerItem,
+                    (SELECT COUNT(*) FROM gibbonMarkbookColumn AS cardAssessment".$assessmentFilter.") AS assessmentItemCount,
+                    (SELECT MAX(CONCAT(cardAssessment.date, ' 00:00:00')) FROM gibbonMarkbookColumn AS cardAssessment".$assessmentFilter.") AS lastAssessmentItem
                 FROM gibbonCourseClassPerson
                 JOIN gibbonCourseClass ON (gibbonCourseClass.gibbonCourseClassID=gibbonCourseClassPerson.gibbonCourseClassID)
                 JOIN gibbonCourse ON (gibbonCourse.gibbonCourseID=gibbonCourseClass.gibbonCourseID)

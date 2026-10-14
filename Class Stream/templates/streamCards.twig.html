@@ -16,10 +16,10 @@ dashboard tab (compact = true).
         <div class="cs-card-body">
             <div class="text-xs text-gray-600">{{ class.teachers ?: '&nbsp;'|raw }}</div>
             <div class="text-xs text-gray-500 mt-2">
-                {% if class.postCount > 0 %}
-                    {{ __m('{count} posts', {'count': class.postCount}) }} &middot; {{ formatUsing('relativeTime', class.lastPost) }}
+                {% if class.activityCount > 0 %}
+                    {{ __m('{count} items', {'count': class.activityCount}) }} &middot; {{ formatUsing('relativeTime', class.lastActivity) }}
                 {% else %}
-                    {{ __m('No posts yet') }}
+                    {{ __m('No activity yet') }}
                 {% endif %}
             </div>
         </div>

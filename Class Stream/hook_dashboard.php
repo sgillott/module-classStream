@@ -41,7 +41,7 @@ use Gibbon\Module\ClassStream\Domain\ViewGateway;
 global $container;
 
 // The Parental Dashboard builds one dashboard per child and includes this file inside that loop,
-// with the child's ID already in $gibbonPersonID. Keep it before anything below overwrites it.
+// with the child's ID already in $gibbonPersonID. Keep it separate from the logged-in viewer ID.
 $hookChildID = $gibbonPersonID ?? null;
 
 $container->get(ModuleLoader::class)->registerModuleNamespace('Class Stream');
@@ -70,7 +70,7 @@ if ($scope === false) {
 }
 
 $gibbonSchoolYearID = $session->get('gibbonSchoolYearID');
-$gibbonPersonID = $session->get('gibbonPersonID');
+$viewerPersonID = $session->get('gibbonPersonID');
 $postGateway = $container->get(PostGateway::class);
 $streamAccess = $container->get(StreamAccess::class);
 $moduleURL = $session->get('absoluteURL').'/index.php?q=/modules/Class Stream';
@@ -88,7 +88,7 @@ if ($scope == 'parent') {
     $output = '';
     foreach ($shown as $child) {
         $classes = $postGateway->selectClassesByPerson($gibbonSchoolYearID, $child['gibbonPersonID'], $parentView)->fetchAll();
-        $newCounts = $viewGateway->selectNewCountsByPerson($gibbonPersonID, $child['gibbonPersonID'], $parentView)->fetchKeyPair();
+        $newCounts = $viewGateway->selectNewCountsByPerson($viewerPersonID, $child['gibbonPersonID'], $parentView)->fetchKeyPair();
         if ($withHeadings) {
             $output .= '<h4 class="mt-2 mb-2">'.Gibbon\Services\Format::name('', $child['preferredName'], $child['surname'], 'Student', false, true).'</h4>';
         }
@@ -101,7 +101,7 @@ if ($scope == 'parent') {
     return '<div class="cs-dashboard">'.$cssGuard.$output.'</div>';
 }
 
-$newCounts = $viewGateway->selectNewCountsByPerson($gibbonPersonID)->fetchKeyPair();
+$newCounts = $viewGateway->selectNewCountsByPerson($viewerPersonID)->fetchKeyPair();
 $decorate = function (array $class) use ($newCounts) {
     return classStreamDecorateCard($class, $newCounts);
 };
@@ -109,7 +109,7 @@ $decorate = function (array $class) use ($newCounts) {
 // STAFF AND STUDENTS: what is on the timetable now?
 $today = date('Y-m-d');
 $now = date('H:i:s');
-$lessons = $postGateway->selectTimetabledClassesByPersonAndDate($gibbonSchoolYearID, $gibbonPersonID, $today)->fetchAll();
+$lessons = $postGateway->selectTimetabledClassesByPersonAndDate($gibbonSchoolYearID, $viewerPersonID, $today)->fetchAll();
 
 $current = [];
 $next = null;
@@ -166,7 +166,7 @@ if (empty($current) && $next !== null) {
     $output .= $strip($next, __m('Next'));
 }
 
-$classes = $postGateway->selectClassesByPerson($gibbonSchoolYearID, $gibbonPersonID)->fetchAll();
+$classes = $postGateway->selectClassesByPerson($gibbonSchoolYearID, $viewerPersonID)->fetchAll();
 
 $output .= $page->fetchFromTemplate('streamCards.twig.html', [
     'compact'               => true,
